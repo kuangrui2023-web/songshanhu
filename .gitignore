@@ -8,3 +8,6 @@
 *.log
 next-env.d.ts
 public/experience/config.js
+/AGENTS.md
+/CLAUDE.md
+/supabase/.temp/

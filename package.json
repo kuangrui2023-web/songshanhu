@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "prebuild": "node scripts/generate-config.mjs",
-    "build": "next build --webpack"
+    "build": "next build"
   },
   "dependencies": {
     "class-variance-authority": "0.7.1",

@@ -10,7 +10,7 @@
  *   2. 执行：
  *        node --env-file=.env.local scripts/create-admin.mjs
  */
-const baseUrl = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
+const baseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const email = process.env.ADMIN_EMAIL || "";
 const password = process.env.ADMIN_PASSWORD || "";

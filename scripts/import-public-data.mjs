@@ -23,7 +23,7 @@ const args = Object.fromEntries(
   })
 );
 
-const baseUrl = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
+const baseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 if (!baseUrl || !serviceKey) {
   console.error("缺少 SUPABASE_URL 或 SUPABASE_SERVICE_ROLE_KEY。");
@@ -44,7 +44,9 @@ const assetTypes = {
   ".mov": "video/quicktime"
 };
 
-const listings = JSON.parse(await readFile(path.join(dataDir, "listings.json"), "utf8"));
+const allListings = JSON.parse(await readFile(path.join(dataDir, "listings.json"), "utf8"));
+const limit = Number(args.limit || 0);
+const listings = limit > 0 ? allListings.slice(0, limit) : allListings;
 const manifest = JSON.parse(await readFile(path.join(dataDir, "manifest.json"), "utf8"));
 const mediaByUrl = new Map(manifest.media.map((item) => [item.url, item]));
 
@@ -81,7 +83,27 @@ async function uploadMedia(mediaUrl) {
   return `${baseUrl}/storage/v1/object/public/${target.bucket}/${target.path}`;
 }
 
+const REGION_PARK = {
+  北部: "松山湖北部",
+  中部: "松山湖中部",
+  南部: "松山湖南部",
+  生态园: "松山湖生态园",
+  大朗: "大朗",
+  寮步: "寮步",
+  大岭山: "大岭山",
+  东城: "东城",
+  南城: "南城"
+};
+
+function inferRegion(listing) {
+  if (listing.region) return listing.region;
+  const text = [listing.title, listing.park, listing.address].filter(Boolean).join(" ");
+  const matches = Object.keys(REGION_PARK).filter((region) => text.includes(region));
+  return matches.length === 1 ? matches[0] : null;
+}
+
 function toRow(listing, imageUrls, videoUrls) {
+  const region = inferRegion(listing);
   const visibility = {};
   if (listing.has_agent_fee !== null && listing.has_agent_fee !== undefined) visibility.has_agent_fee = true;
   if (listing.wechat) visibility.wechat = true;
@@ -90,7 +112,8 @@ function toRow(listing, imageUrls, videoUrls) {
     id: listing.id,
     title: listing.title,
     category: listing.category,
-    park: listing.park,
+    park: listing.park || REGION_PARK[region] || "待确认",
+    region,
     unit: listing.unit,
     building: listing.building,
     room: listing.room,
@@ -151,7 +174,8 @@ async function upsert(row) {
   if (!response.ok) throw new Error(`写入房源失败 ${response.status} ${row.id}\n${await response.text()}`);
 }
 
-console.log(`准备导入 ${listings.length} 条房源，媒体 ${manifest.media.length} 个${dryRun ? "（演练模式，不写入）" : ""}`);
+const selectedMedia = new Set(listings.flatMap((listing) => [...(listing.images || []), ...(listing.videos || [])]));
+console.log(`准备导入 ${listings.length} 条房源，媒体 ${selectedMedia.size} 个${dryRun ? "（演练模式，不写入）" : ""}`);
 const rows = [];
 let index = 0;
 for (const listing of listings) {

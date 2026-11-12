@@ -1,0 +1,17 @@
+/* Detail navigation follows the finger; no horizontal gesture on desktop. */
+@media(max-width:899px){
+ #view-detail>:not(.gallery):not(.detail-videos):not(.park-card),
+ #view-detail .park-row,#view-detail .park-card>h3,
+ #view-resources>*{touch-action:pan-y pinch-zoom}
+ .viewport.page-transitioning{isolation:isolate}
+ .viewport.page-transitioning>.view.active{animation:none}
+ .viewport>.view.page-moving{display:block;animation:none;will-change:transform}
+ .viewport>.view.page-front{z-index:2;background:var(--bg);box-shadow:-12px 0 32px rgba(19,40,70,.15)}
+ .viewport>.view.page-underlay{z-index:1;pointer-events:none}
+ .viewport.page-settling{pointer-events:none}
+ .viewport.page-dragging{user-select:none;-webkit-user-select:none}
+ .viewport.page-dragging .page-front{border-radius:12px 0 0 12px}
+}
+@media(prefers-reduced-motion:reduce){
+ .viewport>.view.page-front{box-shadow:none}
+}

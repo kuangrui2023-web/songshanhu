@@ -1,0 +1,79 @@
+.industry-page {
+  width: min(calc(100% - 28px), var(--content-width));
+  margin: 18px auto 0;
+  padding-bottom: 30px;
+  color: #172941;
+}
+.industry-page h2 { font-size: 19px; line-height: 1.25; }
+.industry-match {
+  display: grid;
+  gap: 20px;
+  padding: 22px 18px 18px;
+  border-radius: 18px;
+  color: #fff;
+  background: linear-gradient(115deg, #12396e, #1656a5);
+}
+.industry-match h2 { font-size: clamp(26px, 4vw, 36px); letter-spacing: -.02em; }
+.industry-match p { margin-top: 8px; color: #e2edff; font-size: 14px; line-height: 1.6; }
+.industry-composer { min-width: 0; padding: 10px; border-radius: 12px; background: #fff; }
+.industry-composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px;
+  background: #f2f6fc;
+  color: #172941;
+  font: inherit;
+}
+.industry-composer-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.industry-composer-actions span { color: #53647b; font-size: 12px; }
+.industry-composer-actions button { margin-left: auto; min-height: 42px; padding: 0 14px; border-radius: 8px; background: var(--primary-d); color: #fff; font-weight: 600; }
+.industry-personal { display: grid; gap: 10px; margin-top: 12px; }
+.industry-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 96px;
+  padding: 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  background: #fff;
+}
+.industry-panel > div { min-width: 0; }
+.industry-panel p { margin-top: 5px; color: #53647b; font-size: 13px; overflow-wrap: anywhere; }
+.industry-panel button { flex: 0 0 auto; min-height: 44px; padding: 0 10px; border-radius: 8px; background: var(--primary-l); color: var(--primary-d); font-size: 13px; font-weight: 600; }
+.industry-panel button span { margin-left: 3px; }
+.industry-catalog { margin-top: 24px; }
+.industry-catalog-head, .industry-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.industry-catalog-head h2 { padding-left: 10px; border-left: 4px solid var(--primary); }
+.industry-toolbar { margin: 12px 0; }
+.industry-toolbar select { min-height: 42px; max-width: 100%; padding: 0 26px 0 12px; border: 1px solid var(--line-2); border-radius: 9px; background-color: #fff; color: inherit; font: inherit; }
+.industry-count, .industry-empty { color: #53647b; font-size: 13px; }
+.industry-empty { border: 1px dashed #cbd8e9; border-radius: 12px; padding: 22px 14px; text-align: center; }
+.industry-grid { display: grid; gap: 12px; align-items: start; }
+.industry-resource { min-width: 0; border: 1px solid var(--line-2); border-radius: 12px; background: #fff; overflow-wrap: anywhere; }
+.industry-resource summary { list-style: none; cursor: pointer; padding: 14px; border-radius: 12px; }
+.industry-resource summary::-webkit-details-marker { display: none; }
+.industry-resource summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.industry-resource h3 { font-size: 16px; margin: 8px 0; }
+.industry-type { display: inline-block; border-radius: 6px; background: var(--primary-l); color: #234b7b; padding: 3px 8px; font-size: 12px; }
+.industry-detail-label::before { content: '查看详情 ›'; color: var(--primary-d); font-size: 13px; }
+.industry-resource details[open] .industry-detail-label::before { content: '收起详情 ⌃'; }
+.industry-resource-details { border-top: 1px solid var(--line); padding: 12px 14px 14px; white-space: pre-wrap; }
+.industry-contact { margin-top: 6px; color: #53647b; }
+.industry-delete { margin: 0 14px 12px; color: var(--danger); }
+
+@media (min-width: 720px) {
+  .industry-page { width: min(calc(100% - 56px), var(--content-width)); margin-top: 28px; }
+  .industry-match { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: center; gap: 24px; padding: 28px; }
+  .industry-personal, .industry-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .industry-panel { padding: 18px; }
+  .industry-catalog { margin-top: 28px; }
+}
+@media (min-width: 1050px) {
+  .industry-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

@@ -1,0 +1,10 @@
+/node_modules/
+/.next/
+/out/
+/.DS_Store
+/.env*
+!/.env.example
+*.tsbuildinfo
+*.log
+next-env.d.ts
+public/experience/config.js

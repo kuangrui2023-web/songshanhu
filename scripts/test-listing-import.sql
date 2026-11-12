@@ -1,0 +1,38 @@
+begin;
+do $$
+declare actor uuid; req uuid:=gen_random_uuid(); other_req uuid:=gen_random_uuid(); park_name text:='导入验收-'||gen_random_uuid(); original_role text; original_park text; original_active boolean; data jsonb; r jsonb; again jsonb; rec public.listings; publ jsonb;
+begin
+ select user_id,role,park,active into actor,original_role,original_park,original_active from public.admin_users where role='superadmin' and active limit 1;
+ if actor is null then raise exception 'No active superadmin test context';end if;
+ if has_function_privilege('anon','public.site_import_listing_note(uuid,jsonb,text)','execute') or has_function_privilege('anon','private.site_import_listing_note(uuid,jsonb,text)','execute') or has_table_privilege('authenticated','private.listing_note_imports','select') then raise exception 'Unexpected public access';end if;
+ data:=jsonb_build_object('title','松山湖北部简装100㎡','category','写字楼','park',park_name,'region','北部','building','1栋','room','713室','floor','7楼','area',100,'price',32,'fee',6,'owner_floor_price',23,'owner_contact_name','内部测试联系人','owner_contact_phone','01000000001','contact_name','测试顾问','contact_phone','01000000000','images',jsonb_build_array('https://zywbyjnbzgwmdypgobvh.supabase.co/storage/v1/object/public/listing-media/'||actor::text||'/'||gen_random_uuid()::text||'.webp'),'field_visibility',jsonb_build_object('park',true,'room',true),'views',99999);
+ perform set_config('request.jwt.claim.sub','',true);
+ begin perform public.site_import_listing_note(req,data,'check');raise exception 'Missing identity accepted';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+ begin perform public.site_import_listing_note(req,data,'check');raise exception 'Non-admin accepted';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claim.sub',actor::text,true);
+ r:=public.site_import_listing_note(req,data,'check');if r->>'status'<>'new' then raise exception 'Expected new';end if;
+ r:=public.site_import_listing_note(req,data,'published');if r->>'status'<>'saved' then raise exception 'Save failed';end if;
+ select * into rec from public.listings where id=req;
+ if rec.region<>'北部' or rec.views<>0 or rec.internal_code!~'^[0-9]{6}$' or rec.field_visibility->>'park'<>'false' then raise exception 'Unexpected writable fields';end if;
+ again:=public.site_import_listing_note(req,data,'published');if again<>r then raise exception 'Retry changed result';end if;
+ r:=public.site_import_listing_note(other_req,data||'{"building":"１","room":"７１３"}'::jsonb,'published');if r->>'status'<>'duplicate' then raise exception 'Cross-request normalized duplicate inserted';end if;
+ if (select count(*) from public.listings where park=park_name)<>1 then raise exception 'Duplicate row count';end if;
+ select to_jsonb(p) into publ from public.public_listings p where id=req;
+ if publ is null or publ->>'park' is not null or publ->>'room' is not null or publ?'owner_contact_phone' or publ?'owner_floor_price' then raise exception 'Private fields exposed';end if;
+ update public.listings set deleted_at=now(),status='draft' where id=req;
+ r:=public.site_import_listing_note(other_req,data,'check');if r->>'status'<>'duplicate' then raise exception 'Trashed listing ignored';end if;
+ begin perform public.site_import_listing_note(req,data||jsonb_build_object('park','other'), 'check');raise exception 'Request identity reuse accepted';exception when insufficient_privilege then null;end;
+ begin perform public.site_import_listing_note(gen_random_uuid(),data||'{"room":"999","description":"业主底价23"}'::jsonb,'published');raise exception 'Private text accepted';exception when raise_exception then if SQLERRM='Private text accepted' then raise;end if;end;
+ begin perform public.site_import_listing_note(gen_random_uuid(),data||'{"room":"999","area":"NaN"}'::jsonb,'published');raise exception 'NaN accepted';exception when raise_exception then if SQLERRM='NaN accepted' then raise;end if;end;
+ begin perform public.site_import_listing_note(gen_random_uuid(),data||'{"room":"999","images":["https://evil.invalid/photo.webp"]}'::jsonb,'published');raise exception 'Foreign photo accepted';exception when raise_exception then if SQLERRM='Foreign photo accepted' then raise;end if;end;
+ r:=public.site_import_listing_note(gen_random_uuid(),data||'{"room":"888","images":[]}'::jsonb,'draft');if r->>'status'<>'saved' then raise exception 'Draft save failed';end if;
+ update public.admin_users set role='park_admin',park=park_name where user_id=actor;
+ begin perform public.site_import_listing_note(gen_random_uuid(),data||jsonb_build_object('park','其他无权园区'),'check');raise exception 'Park scope escaped';exception when insufficient_privilege then null;end;
+ r:=public.site_import_listing_note(gen_random_uuid(),data||'{"room":"777"}'::jsonb,'check');if r->>'status'<>'new' then raise exception 'Own park rejected';end if;
+ update public.admin_users set active=false where user_id=actor;
+ begin perform public.site_import_listing_note(gen_random_uuid(),data,'check');raise exception 'Inactive admin accepted';exception when insufficient_privilege then null;end;
+ update public.admin_users set role=original_role,park=original_park,active=original_active where user_id=actor;
+end $$;
+rollback;
+select 'PASS: scoped insert, private fields, exact and normalized duplicate, trashed duplicate, retry receipt, draft, image URL, nonfinite numbers, inactive/cross-park rejection; transaction rolled back' as result;

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "R001",
+    "category": "写字楼",
+    "unit": "实拍房源 1",
+    "floor": "",
+    "area": null,
+    "price": null,
+    "fee": null,
+    "facing": "",
+    "layout": "",
+    "decoration": "",
+    "image": "/listings/real-1.jpg",
+    "source": "用户提供实拍"
+  },
+  {
+    "id": "R002",
+    "category": "写字楼",
+    "unit": "实拍房源 2",
+    "floor": "",
+    "area": null,
+    "price": null,
+    "fee": null,
+    "facing": "",
+    "layout": "",
+    "decoration": "",
+    "image": "/listings/real-2.jpg",
+    "source": "用户提供实拍"
+  },
+  {
+    "id": "R003",
+    "category": "写字楼",
+    "unit": "实拍房源 3",
+    "floor": "",
+    "area": null,
+    "price": null,
+    "fee": null,
+    "facing": "",
+    "layout": "",
+    "decoration": "",
+    "image": "/listings/real-3.jpg",
+    "source": "用户提供实拍"
+  },
+  {
+    "id": "R004",
+    "category": "写字楼",
+    "unit": "实拍房源 4",
+    "floor": "",
+    "area": null,
+    "price": null,
+    "fee": null,
+    "facing": "",
+    "layout": "",
+    "decoration": "",
+    "image": "/listings/real-4.jpg",
+    "source": "用户提供实拍"
+  }
+]

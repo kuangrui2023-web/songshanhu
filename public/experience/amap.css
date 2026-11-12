@@ -1,0 +1,12 @@
+.amap-panel{margin:20px;background:#fff;border-radius:20px;overflow:hidden;border:1px solid #e2eaf5}
+.amap-panel-head{padding:20px 22px;border-bottom:1px solid #edf1f7}
+.amap-panel-head h2{font-size:20px;margin:0 0 8px;color:#203552}
+.amap-panel-head p{margin:0;color:#748299;font-size:14px;line-height:1.6}
+.amap-host{height:520px;position:relative;background:#f5f7fb;isolation:isolate}
+.amap-canvas{position:absolute;inset:0}
+.amap-status{position:absolute;left:20px;right:20px;top:20px;padding:16px;background:#fff;border-radius:12px;color:#52647a;text-align:center;box-shadow:0 5px 20px #263d5614;z-index:2;line-height:1.7}
+.amap-listing-marker{background:#1677ff;color:#fff;border:2px solid #fff;border-radius:20px;padding:7px 12px;box-shadow:0 3px 12px #184db944;font-family:inherit;font-size:14px;font-weight:600;white-space:nowrap;cursor:pointer}
+.amap-listing-marker:focus-visible{outline:3px solid #112b54;outline-offset:3px}
+#detailMap{position:relative;overflow:hidden;isolation:isolate}
+@media(min-width:900px){.amap-panel{margin:28px 40px}.amap-host{height:560px}}
+@media(max-width:600px){.amap-panel{margin:14px 12px;border-radius:16px}.amap-panel-head{padding:16px}.amap-host{height:440px}}

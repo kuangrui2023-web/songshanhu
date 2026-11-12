@@ -1,0 +1,31 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync('public/experience/new-listings.js', 'utf8');
+const now = Date.parse('2026-10-21T12:00:00Z');
+const day = 86400000;
+const context = {window:{}};
+vm.runInNewContext(source, context);
+const api = context.window.SiteNewListings;
+const listing = {status:'online',firstPublishedAt:new Date(now).toISOString()};
+assert.equal(api.isNew(listing,now),true);
+assert.equal(api.isNew(listing,now+day-1),true);
+assert.equal(api.isNew(listing,now+day),false);
+assert.equal(api.isNew(listing,now-1),false);
+for(const firstPublishedAt of [null,undefined,'','not-a-date']) assert.equal(api.isNew({...listing,firstPublishedAt},now),false);
+assert.equal(api.isNew({...listing,status:'offline'},now),false);
+assert.equal(api.isNew({status:'online',createdAt:listing.firstPublishedAt,updatedAt:listing.firstPublishedAt},now),false);
+assert.equal(api.badgeMarkup(listing,now+day),'');
+assert.equal(api.badgeMarkup(listing,now),'');
+
+// Rendered card preserves promotions but never lets a manual tag bypass 24 hours.
+const app=fs.readFileSync('public/experience/app.js','utf8');
+const cardSource=app.slice(app.indexOf('function listingCard('),app.indexOf('\nfunction statusPill('));
+const cardContext={window:{SiteNewListings:{badgeMarkup:l=>api.badgeMarkup(l,now)}},TAG_META:{'热门':{cls:'hot'},'新上':{cls:'new'}},photoURL:x=>x,photoURI:()=>'',esc:x=>String(x??'').replaceAll('"','&quot;'),publicListingTitle:l=>l.title};
+vm.runInNewContext(cardSource,cardContext);
+const card={...listing,id:'test',title:'测试',photos:[],parkName:'测试园区'};
+assert.doesNotMatch(cardContext.listingCard({...card,tag:'热门'}),/listing-new-badge/);
+assert.match(cardContext.listingCard({...card,tag:'热门'}),/lcard-badge hot/);
+const expired=cardContext.listingCard({...card,tag:'新上',firstPublishedAt:new Date(now-day).toISOString()});
+assert.doesNotMatch(expired,/listing-new-badge|lcard-badge new/);
+console.log('PASS: publication dates preserved, new badges retired, other promotion tags preserved.');

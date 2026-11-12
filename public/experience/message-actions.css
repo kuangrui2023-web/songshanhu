@@ -1,0 +1,29 @@
+.msg-delete-row{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:6px;margin-top:10px;min-height:48px}
+.msg-delete-note{flex:0 0 100%;font-size:11.5px;line-height:1.65;color:var(--text-2);display:none}
+.msg-delete-note.visible{display:block}
+.message-delete{width:48px;height:48px;position:relative;border-radius:15px;color:#858595;background:#f4f4f9;transition:width 620ms cubic-bezier(.32,.72,0,1);flex:none}
+.message-delete.open{width:152px}
+.msg-delete-trigger{position:relative;z-index:2;width:48px;height:48px;border-radius:15px;display:grid;place-items:center}
+.msg-delete-trigger:active{scale:.94}
+.msg-bin,.msg-delete-check{width:22px;height:22px;position:absolute;overflow:visible;transition:opacity 220ms,transform 450ms var(--ease-spring)}
+.bin-lid{transform-origin:3px 6px;transition:transform 600ms cubic-bezier(.34,1.1,.64,1)}
+.bin-wall{transform-origin:12px 20px;transition:transform 560ms cubic-bezier(.32,.72,0,1)}
+.message-delete.open .bin-lid{transform:rotate(-35deg)}
+.message-delete.open .bin-wall{transform:scaleY(.62)}
+.msg-delete-panel{position:absolute;right:0;top:0;width:104px;height:48px;display:flex;align-items:center;justify-content:center;gap:4px;background:#e7e7ef;border-radius:15px;opacity:0;transform:translateX(-6px);transition:opacity 300ms,transform 440ms var(--ease-out);pointer-events:none}
+.message-delete.open .msg-delete-panel{opacity:1;transform:none;pointer-events:auto;transition-delay:120ms}
+.msg-delete-panel button{width:44px;height:44px;display:grid;place-items:center;border-radius:50%;background:#f7f7fb;box-shadow:inset 0 1px #fff,0 1px 3px #0000000d;flex:none}
+.msg-delete-panel button:first-child{color:#dd5b37}
+.msg-delete-panel svg{width:18px;height:18px}
+.message-delete button:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+.msg-delete-check{color:var(--success);opacity:0;transform:scale(.6)}
+.message-delete.done .msg-bin,.message-delete.pending .msg-bin{opacity:0}
+.message-delete.done .msg-delete-check{opacity:1;transform:scale(1)}
+.message-delete.done .msg-delete-check path{stroke-dasharray:28;animation:profile-save-tick 450ms var(--ease-out)}
+.msg-delete-spinner{position:absolute;width:20px;height:20px;border:2px solid #d3dbea;border-top-color:var(--primary);border-radius:50%;display:none}
+.message-delete.pending .msg-delete-spinner{display:block;animation:profile-save-spin 900ms linear infinite}
+.msg-delete-status{font-size:12px;color:var(--success)}
+.msg-delete-status.error{flex:0 0 100%;color:#bc3a32;text-align:right;line-height:1.7}
+.message-redo{margin:14px;padding:14px;border:1px solid #d6e7fb;background:#f3f8ff;border-radius:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.message-redo>div{flex:1;min-width:160px}.message-redo b{font-size:13px}.message-redo p{font-size:12px;color:var(--text-2);margin-top:4px}.message-redo button{min-height:44px}
+@media(prefers-reduced-motion:reduce){.message-delete,.msg-delete-panel,.bin-lid,.bin-wall,.msg-bin,.msg-delete-check{transition:none!important}}

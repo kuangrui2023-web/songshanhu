@@ -1,0 +1,6 @@
+/* Keep the green new-listing marker distinct from manually maintained promotions. */
+.lcard-badges{position:absolute;top:10px;left:10px;z-index:2;display:flex;flex-direction:column;align-items:flex-start;gap:6px;pointer-events:none}
+.listing-new-badge{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid #ffffffd9;border-radius:8px;background:#078444;color:#fff;font-size:13px;font-weight:800;line-height:1.2;letter-spacing:1px;box-shadow:0 3px 10px #064e3b38;white-space:nowrap}
+.listing-new-badge svg{flex:none}
+.lcard-badges .lcard-badge{position:static;max-width:100%;border-radius:6px;font-size:11px;line-height:1.3;padding:4px 8px;overflow-wrap:anywhere}
+@media(min-width:900px){.lcard-badges{top:14px;left:14px;gap:7px}.listing-new-badge{font-size:14px;padding:8px 13px;border-radius:9px}.listing-new-badge svg{width:15px;height:15px}}

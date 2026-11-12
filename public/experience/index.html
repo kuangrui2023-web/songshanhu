@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1677FF">
+<meta name="format-detection" content="telephone=no">
+<title>松山湖产业招商网站</title>
+<link rel="icon" type="image/jpeg" href="../denglai-icon.jpg?v=20261019f">
+<link rel="apple-touch-icon" href="../denglai-icon.jpg?v=20261019f">
+<meta name="description" content="松山湖产业招商，支持房源筛选、在线留言与电话直连招商顾问。">
+<meta name="keywords" content="松山湖写字楼,松山湖办公室出租,松山湖产业园,东莞写字楼招商">
+
+<!-- 微信 / 社交分享卡片 -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="松山湖产业招商网站">
+<meta property="og:title" content="松山湖产业招商网站">
+<meta property="og:description" content="松山湖写字楼、厂房与产业资源信息">
+<meta property="og:image" content="assets/songshanhu-map.jpg">
+<meta property="og:url" content="https://ning73988-jpg.github.io/songshanhu-enterprise-spaces/experience/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="松山湖产业招商网站">
+<meta name="twitter:description" content="松山湖写字楼、厂房与产业资源信息">
+<meta name="twitter:image" content="assets/songshanhu-map.jpg">
+<meta itemprop="name" content="松山湖产业招商网站">
+<meta itemprop="description" content="松山湖写字楼、厂房与产业资源信息">
+<meta itemprop="image" content="assets/songshanhu-map.jpg">
+
+<link rel="stylesheet" href="styles.css?v=20261028c">
+<link rel="stylesheet" href="responsive.css?v=20261020e">
+<link rel="stylesheet" href="detail-layout.css?v=20261021a">
+<link rel="stylesheet" href="area-location.css?v=20261021g">
+<link rel="stylesheet" href="../interaction-core.css?v=20261016e">
+<link rel="stylesheet" href="interactions.css?v=20261019k">
+<link rel="stylesheet" href="tab-navigation.css?v=20261021d">
+<link rel="stylesheet" href="page-transitions.css?v=20261019j">
+<link rel="stylesheet" href="message-actions.css?v=20261019k">
+<link rel="stylesheet" href="filter-chips.css?v=20261020e">
+<link rel="stylesheet" href="search-feedback.css?v=20261020p">
+<link rel="stylesheet" href="industry-resources.css?v=20261112a">
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="phone" id="phone">
+    <!-- 导航栏 -->
+    <header class="navbar" id="navbar">
+      <button class="nav-back" id="navBack" type="button" aria-label="返回">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M15 4 L7 12 L15 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="brand-mark" type="button" data-act="tab" data-v="home" aria-label="返回首页" title="返回首页"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M8 8h3M8 12h3M8 16h3M2 21h20"/></svg></button>
+      <h1 class="nav-title" id="navTitle">松山湖产业招商网站</h1>
+      <nav class="desktop-nav" aria-label="网站导航">
+        <button type="button" data-act="tab" data-v="home">找房源</button>
+        <button type="button" data-act="open:resources">产业资源</button>
+        <button type="button" data-act="tab" data-v="message">留言咨询</button>
+        <button type="button" data-act="tab" data-v="mine">我的</button>
+      </nav>
+      <div class="nav-right" id="navRight"></div>
+      <button class="brand-badge" type="button" data-act="login:pending" aria-label="登录（功能暂未开放）">登录</button>
+    </header>
+
+    <!-- 主视图区 -->
+    <main class="viewport" id="viewport">
+      <section class="view" id="view-home"></section>
+      <section class="view" id="view-message"></section>
+      <section class="view" id="view-mine"></section>
+      <section class="view" id="view-resources"></section>
+      <section class="view" id="view-detail"></section>
+      <section class="view" id="view-admin"></section>
+    </main>
+
+    <!-- 底部导航 -->
+    <nav class="tabbar" id="tabbar" aria-label="主导航"></nav>
+  </div>
+</div>
+
+<!-- 底部弹层 / 表单 -->
+<div class="sheet-mask" id="sheetMask">
+  <div class="sheet" id="sheet"></div>
+</div>
+<div class="dialog-mask" id="dialogMask">
+  <div class="dialog" id="dialog"></div>
+</div>
+
+<!-- 分享海报 -->
+<div class="poster-mask" id="posterMask">
+  <div class="poster-box">
+    <img id="posterImg" alt="房源分享海报">
+    <div class="poster-ops">
+      <button type="button" class="gray" data-act="close:poster">关闭</button>
+      <button id="posterSave" type="button" class="pri" data-act="save:poster">保存图片</button>
+    </div>
+    <a id="posterOriginal" class="poster-original" target="_blank" rel="noopener" hidden>打开原图</a>
+    <div class="poster-tip" role="status" aria-live="polite">正在准备图片…</div>
+  </div>
+</div>
+
+<!-- 微信内分享引导 -->
+<div class="wx-guide" id="wxGuide" data-act="close:wxGuide">
+  <div class="wx-arrow">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 12 H6"/><path d="M11 7 L6 12 L11 17"/>
+    </svg>
+  </div>
+  <div class="wx-text">
+    <b>点击右上角 ●···</b>
+    <span>选「发送给朋友」即可直接发给微信好友，或「分享到朋友圈」</span>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../interaction-core.js?v=20261016e"></script>
+<script src="interactions.js?v=20261028c"></script>
+<script src="config.js?v=20261020p"></script>
+<script src="vendor/qrcode.js?v=20261007c"></script>
+<script src="vendor/qrcode_UTF8.js?v=20261007c"></script>
+<script src="fees.js?v=20261020h"></script>
+<script src="listing-codes.js?v=20261022b"></script>
+<script src="data.js?v=20261027a"></script>
+<script src="filter-chips.js?v=20261020e"></script>
+  <script src="ai-search.js?v=20261023b"></script>
+<script src="search-feedback.js?v=20261023a"></script>
+<script src="detail-gallery.js?v=20261020n"></script>
+<script src="new-listings.js?v=20261022c"></script>
+<script src="area-location.js?v=20261027a"></script>
+<script src="customer-profile.js?v=20261028c"></script>
+<script src="app.js?v=20261112a"></script>
+<script src="bridge.js?v=20261022b"></script>
+<script src="tab-navigation.js?v=20261021d"></script>
+<script src="page-transitions.js?v=20261019j"></script>
+<script src="message-actions.js?v=20261019k"></script>
+</body>
+</html>

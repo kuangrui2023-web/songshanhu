@@ -1,0 +1,166 @@
+/* Property detail: photo-led layout with a separate monthly-cost / enquiry column.
+   Scoped to detail only; existing data, decimal fees and interaction hooks are retained. */
+html[data-view="detail"] .viewport{background:#fff}
+#view-detail{background:#fff}
+#view-detail .detail-layout{--detail-ink:#172333;--detail-muted:#6a7585;--detail-line:#e2e7ee;--detail-blue:#204fb5;display:grid;grid-template-areas:"media" "heading" "sidebar" "facts" "contact" "description" "park" "video";gap:24px;max-width:1220px;margin:0 auto;padding:0 18px 104px;color:var(--detail-ink)}
+#view-detail .detail-layout>*{min-width:0}
+#view-detail .detail-media{grid-area:media;margin:0 -18px}
+#view-detail .detail-photo-layout{min-width:0;overflow:hidden;background:#f2f4f6}
+#view-detail .gallery{width:100%;max-width:none;margin:0;border-radius:0}
+#view-detail .gallery-track{aspect-ratio:4/3;scrollbar-width:none}
+#view-detail .gallery-track::-webkit-scrollbar{display:none}
+#view-detail .detail-thumbnails{display:none}
+#view-detail .gallery-controls-hint{font-size:11px;padding:9px 0 0;color:var(--detail-muted);margin:0}
+#view-detail .detail-head{grid-area:heading;display:flex;flex-direction:column;padding:0;margin:0!important;max-width:none;border-radius:0;background:none}
+#view-detail .detail-title{order:-1;font-size:25px;font-weight:720;line-height:1.45;letter-spacing:-.5px;margin:0 0 14px;overflow-wrap:anywhere;color:var(--detail-ink)}
+#view-detail .detail-price{gap:5px}
+#view-detail .detail-price .num{font-size:30px;line-height:1.15;font-weight:700;letter-spacing:-1px;color:var(--detail-ink)}
+#view-detail .detail-price .unit{font-size:12px;color:var(--detail-muted)}
+#view-detail .detail-price .fee{font-size:12px;color:var(--detail-muted);margin-left:auto}
+#view-detail .detail-tags{gap:7px;margin-top:16px}
+#view-detail .detail-tags .tag{font-size:12px;border-radius:4px;padding:4px 8px;line-height:1.4}
+#view-detail .detail-sidebar{grid-area:sidebar;align-self:start;border:1px solid var(--detail-line);border-radius:17px;padding:20px;background:#fff;box-shadow:0 12px 30px -24px #23365060}
+#view-detail .monthly-costs{padding:0;margin:0;border-radius:0;background:none}
+#view-detail .monthly-costs h3{font-size:15px;line-height:1.5;margin:0 0 10px;color:var(--detail-ink)}
+#view-detail .monthly-costs dl>div{padding:15px 0;gap:12px;border-color:var(--detail-line)}
+#view-detail .monthly-costs dt{font-size:13px;color:var(--detail-ink)}
+#view-detail .monthly-costs dt small{font-size:11px;color:var(--detail-muted);line-height:1.6;margin-top:5px}
+#view-detail .monthly-costs dd{font-size:18px;font-weight:700;letter-spacing:-.35px;color:var(--detail-ink)}
+#view-detail .monthly-costs .monthly-costs-total{padding:18px 0 8px}
+#view-detail .monthly-costs-total dd{font-size:24px;color:var(--price)}
+#view-detail .monthly-costs-body>p{font-size:11px;line-height:1.85;margin:12px 0 0;color:var(--detail-muted)}
+#view-detail .costs-toggle{display:none}
+#view-detail .detail-contact-body{grid-area:contact;min-width:0;padding:18px;border:1px solid var(--detail-line);border-radius:13px;background:#f8faff}
+#view-detail .detail-contact-body h3{font-size:16px;line-height:1.5;margin:0 0 14px;color:var(--detail-ink)}
+#view-detail .detail-contact{max-width:none;margin:0!important;padding:0;border-radius:0;border:0;background:none;gap:10px}
+#view-detail .contact-avatar{width:40px;height:40px;flex-basis:40px;border-radius:50%;background:var(--detail-ink);font-size:15px}
+#view-detail .contact-name{font-size:14px;color:var(--detail-ink)}
+#view-detail .contact-role{font-size:11px;color:var(--detail-muted);line-height:1.5}
+#view-detail .detail-contact>.btn{color:var(--detail-blue);background:#f0f4fc;border:1px solid #e1e9f8;white-space:nowrap;font-size:11px;padding:0 9px}
+#view-detail .info-grid{grid-area:facts}
+#view-detail .park-card{grid-area:park}
+#view-detail .detail-desc{grid-area:description}
+#view-detail .detail-videos{grid-area:video}
+#view-detail .info-grid,#view-detail .park-card,#view-detail .detail-desc,#view-detail .detail-videos{margin:0!important;max-width:none;padding:24px 0 0;background:none;border-radius:0;border-top:1px solid var(--detail-line)}
+#view-detail .info-grid h3,#view-detail .detail-desc h3,#view-detail .detail-videos h3{font-size:16px;line-height:1.5;margin:0 0 16px;padding:0;color:var(--detail-ink)}
+#view-detail .info-grid h3::before,#view-detail .detail-desc h3::before{display:none}
+#view-detail .info-rows{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:18px}
+#view-detail .info-item{display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:13px 0;border-bottom:1px solid var(--detail-line);min-width:0}
+#view-detail .info-k{flex:auto;font-size:12px;color:var(--detail-muted)}
+#view-detail .info-v{flex:auto;font-size:15px;line-height:1.5;color:var(--detail-ink);font-weight:600;word-break:normal;overflow-wrap:anywhere}
+#view-detail .info-item.full{grid-column:auto}
+#view-detail .park-card h3{margin:0 0 16px}
+#view-detail .park-card h3>span{display:none!important}
+#view-detail .park-row{gap:12px;align-items:center}
+#view-detail .park-ico{border-radius:9px;background:#f1f5fc;color:var(--detail-blue)}
+#view-detail .park-name{font-size:15px;color:var(--detail-ink)}
+#view-detail .park-addr{color:var(--detail-muted);font-size:12px;line-height:1.6}
+#view-detail .detail-desc p{font-size:14px;line-height:1.95;color:#536172}
+#view-detail .detail-map{margin-top:18px;border-radius:12px;overflow:hidden}
+#view-detail .detail-actions .btn{background:var(--detail-blue);border-radius:10px}
+@media(min-width:900px){
+ html[data-view="detail"]{--nav-h:64px}
+ html[data-view="detail"] .navbar{background:#fff;color:#172333;box-shadow:none;border-bottom:1px solid #e2e7ee}
+ html[data-view="detail"] .nav-title{font-size:17px;letter-spacing:0;font-weight:700}
+ html[data-view="detail"] .nav-back{color:#566275}
+ html[data-view="detail"] .brand-mark{color:#204fb5;background:#f0f4fc;border-color:#e2e9f5;border-radius:8px;width:32px;height:32px;flex-basis:32px}
+ html[data-view="detail"] .brand-mark svg{width:21px;height:21px}
+ html[data-view="detail"] .desktop-nav button{color:#566275;font-size:13px;padding:8px 10px}
+ html[data-view="detail"] .desktop-nav button:hover{color:#204fb5;background:#f0f4fc}
+ html[data-view="detail"] .brand-badge{border-color:#d9e1ed;color:#344156}
+ html[data-view="detail"] .brand-mark:focus-visible,html[data-view="detail"] .brand-badge:focus-visible{outline-color:#204fb5}
+ #view-detail{padding:30px max(28px,calc((100vw - 1220px)/2)) 0}
+ #view-detail .detail-layout{grid-template-columns:minmax(0,1fr) 350px;grid-template-rows:auto auto auto auto auto auto auto;grid-template-areas:"media sidebar" "heading sidebar" "facts sidebar" "contact sidebar" "description sidebar" "park sidebar" "video sidebar";column-gap:32px;row-gap:26px;padding:0 0 48px}
+ #view-detail .detail-media{margin:0}
+ #view-detail .detail-photo-layout{border-radius:15px}
+ #view-detail .detail-photo-layout.has-previews{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr);gap:8px;aspect-ratio:1.7}
+ #view-detail .gallery{border-radius:0;overflow:hidden;min-width:0;height:100%}
+ #view-detail .gallery-track{height:100%;aspect-ratio:1.7}
+ #view-detail .detail-photo-layout.has-previews .gallery-track{aspect-ratio:auto}
+ #view-detail .detail-thumbnails{display:grid;grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;min-height:0}
+ #view-detail .detail-thumbnails.single{grid-template-rows:1fr}
+ #view-detail .detail-thumbnails button{position:relative;min-height:0;padding:0;overflow:hidden;cursor:zoom-in;background:#f2f4f6}
+ #view-detail .detail-thumbnails img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .25s}
+ #view-detail .detail-thumbnails button:hover img{transform:scale(1.025)}
+ #view-detail .detail-thumbnails button:focus-visible{outline-offset:-4px}
+ #view-detail .gallery-dots{bottom:14px}
+ #view-detail .gallery-expand-hint{font-size:10px;padding:5px 9px;right:10px;top:10px}
+ #view-detail .gallery-count{border-radius:6px;background:#ffffffed;color:#172333;backdrop-filter:none;font-size:11px;padding:5px 9px;right:10px}
+ #view-detail .gallery-controls-hint{display:block;text-align:left;font-size:11px}
+ #view-detail .detail-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px 20px;align-items:end;padding:0}
+ #view-detail .detail-title{font-size:29px;line-height:1.4;grid-column:1;grid-row:1;order:0;margin:0}
+ #view-detail .detail-price{grid-column:2;grid-row:1;justify-content:flex-end;max-width:190px}
+ #view-detail .detail-price .num{font-size:32px}
+ #view-detail .detail-price .fee{width:100%;text-align:right;font-size:11px;margin-top:4px}
+ #view-detail .detail-tags{grid-column:1/-1;margin:0}
+ #view-detail .detail-sidebar{position:sticky;top:24px;padding:23px;min-width:0}
+ #view-detail .detail-actions{position:static;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;max-width:none;margin:22px 0 0;padding:0;border:0;border-radius:0;gap:14px 0;background:none;box-shadow:none}
+ #view-detail .detail-actions>.btn{grid-column:1/-1;grid-row:1;margin:0;max-width:none;width:100%;font-size:14px;height:48px;min-width:0}
+ #view-detail .detail-actions>.da-btn{width:auto;min-width:0;flex-basis:auto;font-size:11px;gap:5px;color:#566275;border-right:1px solid #e2e7ee}
+ #view-detail .detail-actions>.da-btn:nth-child(3){border-right:0}
+ #view-detail .detail-actions>.da-btn svg{width:18px;height:18px}
+ #view-detail .detail-actions>.da-btn:hover{color:var(--detail-blue)}
+ #view-detail .info-rows{grid-template-columns:repeat(4,minmax(0,1fr));gap:0 18px}
+ #view-detail .info-item{padding:14px 0}
+ #view-detail .info-v{font-size:15px}
+ #view-detail .video-list{grid-template-columns:1fr}
+}
+@media(min-width:900px) and (max-width:1100px){
+ #view-detail .detail-layout{grid-template-columns:minmax(0,1fr) 320px;column-gap:24px}
+ #view-detail .detail-title{font-size:24px}
+ #view-detail .detail-head{grid-template-columns:1fr;gap:12px}
+ #view-detail .detail-price{grid-column:1;grid-row:2;max-width:none;justify-content:flex-start}
+ #view-detail .detail-price .fee{width:auto;margin-left:auto;text-align:left}
+ #view-detail .detail-tags{grid-row:3}
+ #view-detail .info-rows{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #view-detail .detail-photo-layout.has-previews{grid-template-columns:minmax(0,2.5fr) minmax(0,1fr);aspect-ratio:1.25}
+}
+@media(max-width:359px){
+ #view-detail .detail-layout{padding-left:14px;padding-right:14px}
+ #view-detail .detail-media{margin-left:-14px;margin-right:-14px}
+ #view-detail .detail-sidebar{padding:16px}
+ #view-detail .monthly-costs dd{font-size:16px}
+ #view-detail .monthly-costs-total dd{font-size:21px}
+ #view-detail .detail-title{font-size:23px}
+}
+@media(prefers-reduced-motion:reduce){#view-detail .detail-thumbnails img{transition:none}}
+@media(max-width:899px){
+ #view-detail .detail-sidebar{padding:0;overflow:hidden;border-radius:13px;box-shadow:none}
+ #view-detail .costs-toggle{display:flex;align-items:center;gap:12px;width:100%;padding:16px;text-align:left;background:#f5f8ff;color:var(--detail-ink);border:0;cursor:pointer}
+ #view-detail .costs-toggle-label{font-size:13px;font-weight:600;flex:1;min-width:0}
+ #view-detail .costs-toggle-label small{display:block;font-size:10px;font-weight:400;margin-top:4px;color:var(--detail-muted)}
+ #view-detail .costs-toggle strong{font-size:20px;font-weight:720;color:var(--price);font-variant-numeric:tabular-nums;letter-spacing:-.4px}
+ #view-detail .costs-toggle-action{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--detail-blue);white-space:nowrap}
+ #view-detail .costs-toggle svg{width:14px;height:14px;transition:transform .2s}
+ #view-detail .is-expanded .costs-toggle svg{transform:rotate(180deg)}
+ #view-detail .detail-sidebar .monthly-costs h3{display:none}
+ #view-detail .detail-sidebar:not(.is-expanded) .monthly-costs-body{display:none}
+ #view-detail .detail-sidebar.is-expanded .monthly-costs-body{padding:0 16px 10px;border-top:1px solid var(--detail-line)}
+ #view-detail .monthly-costs dl>div{padding:12px 0}
+ #view-detail .monthly-costs dd{font-size:16px}
+ #view-detail .monthly-costs-total dd{font-size:21px}
+ #view-detail .detail-actions{position:fixed;left:0;right:0;bottom:0;width:100%;margin:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px));border-radius:0;border-top:1px solid var(--detail-line);box-shadow:0 -5px 22px #17233307;z-index:30}
+ #view-detail .detail-actions>.btn{min-width:0;font-size:13px}
+}
+@media(max-width:359px){
+ #view-detail .detail-actions{gap:8px;padding-left:10px;padding-right:10px}
+ #view-detail .detail-actions>.da-btn{width:42px;flex-basis:42px;font-size:10px}
+ #view-detail .detail-actions>.btn{font-size:12px;padding:0 8px}
+}
+/* One shared carousel: all frames follow the same horizontal gesture. */
+#view-detail .gallery-step{top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;line-height:1;padding:0;text-align:center}
+#view-detail .gallery-step svg{width:22px;height:22px;display:block}
+#view-detail .detail-preview{position:relative;min-width:0;min-height:0;overflow:hidden;background:#f2f4f6}
+#view-detail .detail-preview-track{display:flex;width:100%;height:100%;overflow:hidden;outline-offset:-4px}
+#view-detail .detail-preview-track>button{flex:0 0 100%;width:100%;height:100%;user-select:none;-webkit-user-select:none}
+#view-detail .gallery-track,#view-detail .detail-preview-track{overflow:hidden;scroll-snap-type:none;scroll-behavior:auto;touch-action:pan-y pinch-zoom;user-select:none;-webkit-user-select:none}
+#view-detail .gallery-track img,#view-detail .detail-preview-track img{pointer-events:none}
+#view-detail .gallery-track.is-dragging,#view-detail .detail-preview-track.is-dragging,#view-detail .is-dragging>button{cursor:grabbing!important}
+#view-detail .is-dragging img{transform:none!important}
+
+#view-detail .detail-contact-channels{border-top:1px solid var(--detail-line);margin-top:16px;padding-top:12px}#view-detail .detail-contact-channels>div{display:flex;gap:12px;align-items:baseline;padding:7px 0;font-size:12px}#view-detail .detail-contact-channels span{flex:0 0 42px;color:var(--detail-muted,#718096)}#view-detail .detail-contact-channels strong{font-weight:500;overflow-wrap:anywhere;white-space:pre-wrap;color:var(--detail-ink)}
+
+/* Keep photo gestures on the carousel in Safari and embedded iOS browsers. */
+#view-detail .gallery-track>button,#view-detail .detail-preview-track>button{touch-action:pan-y pinch-zoom;-webkit-touch-callout:none}
+#view-detail .gallery-dots,#view-detail .gallery-count,#view-detail .gallery-expand-hint{pointer-events:none}
+#view-detail .gallery-dots .gdot{pointer-events:auto}

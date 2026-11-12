@@ -1,0 +1,79 @@
+/* Mobile app-style navigation. Desktop retains its existing header navigation. */
+@media(max-width:899px){
+ :root{--tab-h:74px}
+ .tabbar{
+  flex-basis:calc(var(--tab-h) + var(--safe-b));height:calc(var(--tab-h) + var(--safe-b));
+  position:absolute;left:0;right:0;bottom:0;align-items:center;
+  padding:8px 14px calc(8px + var(--safe-b));border:0;border-radius:0;
+  background:linear-gradient(180deg,rgba(244,246,250,0),rgba(244,246,250,.3));
+  box-shadow:none;pointer-events:none;
+ }
+ .tab-rail{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));position:relative;
+  width:100%;height:58px;padding:4px;border-radius:28px;
+  background:rgba(255,255,255,.56);border:1px solid rgba(255,255,255,.85);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
+  box-shadow:0 8px 30px rgba(28,52,82,.13),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.4);
+  isolation:isolate;touch-action:none;pointer-events:auto;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+  transition:box-shadow 220ms ease,transform 220ms var(--ease-out);
+ }
+ .tab-rail::after{
+  content:"";position:absolute;inset:0;z-index:1;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(ellipse at var(--glass-x,25%) 0%,rgba(255,255,255,.75),transparent 65%);
+  opacity:.45;transition:opacity 180ms;
+ }
+ #view-home,#view-map,#view-message,#view-mine{
+  padding-bottom:calc(var(--tab-h) + var(--safe-b) + 18px);
+  scroll-padding-bottom:calc(var(--tab-h) + var(--safe-b) + 18px);
+ }
+ .tab-item{
+  position:relative;z-index:2;min-width:0;width:100%;height:48px;flex:none;
+  border-radius:19px;display:block;color:var(--text-2);font-size:13px;font-weight:600;
+  transition:color 220ms ease;touch-action:none;-webkit-touch-callout:none;
+ }
+ .tab-item svg{
+  position:absolute;top:13px;left:50%;width:22px;height:22px;
+  transform:translate3d(-11px,0,0);transition:transform 280ms var(--ease-out);
+ }
+ .tab-label{
+  position:absolute;top:0;left:50%;height:48px;display:flex;align-items:center;
+  white-space:nowrap;line-height:1;opacity:0;transform:translate3d(8px,0,0);
+  transition:opacity 180ms ease,transform 280ms var(--ease-out);pointer-events:none;
+ }
+ .tab-item.on{color:var(--primary-d);font-weight:650}
+ .tab-item.on svg{transform:translate3d(-29px,0,0)}
+ .tab-item.on .tab-label{opacity:1;transform:translate3d(1px,0,0)}
+ .tab-item:active{transform:none;scale:1}
+ .tab-item:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+ .tab-indicator{
+  position:absolute;z-index:0;left:0;top:4px;height:48px;
+  width:var(--tab-pill-width,calc((100% - 8px)/4));border-radius:23px;
+  background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(210,229,255,.58));
+  border:1px solid rgba(255,255,255,.94);
+  box-shadow:0 2px 8px rgba(38,81,139,.09),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(22,119,255,.08);
+  transform:translate3d(var(--tab-pill-x,4px),0,0);
+  transition:transform 300ms var(--ease-out);pointer-events:none;
+ }
+ .tab-rail.scrubbing{transform:translateY(-2px);box-shadow:0 11px 36px rgba(28,52,82,.18),inset 0 1px 0 #fff}
+ .tab-rail.scrubbing::after{opacity:.9}
+ .tab-rail.scrubbing .tab-indicator{transition:none;background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(202,226,255,.78))}
+ .tab-rail.scrubbing .tab-item svg,.tab-rail.scrubbing .tab-label{transition-duration:130ms}
+ .tab-badge{
+  top:5px;left:calc(50% + 6px);transform:none;min-width:15px;height:15px;line-height:15px;
+  font-size:9px;box-shadow:0 0 0 2px #fff;pointer-events:none;
+ }
+ .tab-badge[hidden]{display:none}
+ .tab-item.on .tab-badge{left:calc(50% + 26px)}
+ .viewport.tab-switching .view.active{animation:none}
+}
+@media(max-width:350px){.tabbar{padding-left:8px;padding-right:8px}.tab-label{font-size:12px}.tab-item.on svg{transform:translate3d(-27px,0,0)}}
+@media(prefers-reduced-motion:reduce){
+ .tab-rail,.tab-rail::after,.tab-indicator,.tab-item,.tab-item svg,.tab-label{transition:none!important}
+ .tab-rail.scrubbing{transform:none}
+}
+@media(forced-colors:active){.tab-indicator{border:1px solid Highlight}.tab-item.on{color:Highlight}}
+
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+ .tab-rail{background:rgba(248,250,255,.97)}
+}
+@media(prefers-reduced-transparency:reduce){.tab-rail{background:#f8faff;-webkit-backdrop-filter:none;backdrop-filter:none}}

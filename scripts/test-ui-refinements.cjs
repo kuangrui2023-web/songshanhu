@@ -1,0 +1,28 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const read=p=>fs.readFileSync(p,'utf8');
+assert.match(read('app/admin/page.tsx'),/visible=\{section==='inquiries'\}/);
+assert.match(read('components/inquiry-notifier.tsx'),/section hidden=\{!visible\}/);
+assert.match(read('app/globals.css'),/\.inquiry-notifier\[hidden\]\{display:none!important\}/);
+assert.ok(read('app/globals.css').includes('.inquiry-notifier:not([hidden]) + #admin-section{padding-top:24px}'));
+assert.ok(read('app/globals.css').includes('@media(max-width:640px){.inquiry-notifier:not([hidden]) + #admin-section{padding-top:18px}}'));
+assert.match(read('public/experience/styles.css'),/\.listing-code\{[^}]*color:var\(--text-3\);font-size:11px/);
+assert.match(read('public/experience/styles.css'),/\.listing-code strong\{font-size:inherit;font-weight:inherit/);
+const calls=[],rows=[{id:'one',title:'测试写字楼',area:200,rent:25}];
+const window={addEventListener(){},SiteListingCodes:{parse:()=>null},SiteAI:{async search(query,options){calls.push({query,history:[...options.history]});return {ids:['one'],matches:[{id:'one',reason:'条件匹配'}],summary:['写字楼'],reply:'推荐房源',calledModel:true};}}};
+const context={window,document:{getElementById:()=>null},State:{view:'home',filters:{kw:''}},onlineListings:()=>rows,applyFilters:list=>list,render(){},toast(){},esc:x=>String(x??''),AbortController,Date,console};
+vm.runInNewContext(read('public/experience/search-feedback.js'),context);
+(async()=>{
+  const api=window.HomeSearch;
+  assert.match(api.markup(rows),/placeholder="输入你想要的写字楼\/厂房，我帮你找"/);
+  await api.submit('我要200平，两间隔间的写字楼');
+  assert.equal(calls[0].history.length,0);
+  assert.match(api.markup(rows),/placeholder="可以继续补充面积、预算、装修等要求，我帮你进一步筛选"/);
+  await api.submit('预算6000以内，其他要求不变');
+  assert.deepEqual(calls[1].history,['我要200平，两间隔间的写字楼']);
+  assert.equal(api.matchIds('预算6000以内，其他要求不变').join(','),'one');
+  api.clear();
+  assert.match(api.markup(rows),/placeholder="输入你想要的写字楼\/厂房，我帮你找"/);
+  await api.submit('换找厂房');
+  assert.equal(calls[2].history.length,0);
+  console.log('PASS: message-only notifier visibility, muted code styling, initial recommendation, follow-up history and clear reset.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

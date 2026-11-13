@@ -104,12 +104,12 @@ Deno.serve(async(request:Request)=>{
       const timeout=setTimeout(()=>controller.abort(),45000);
       try{
         send('stage',{state:'researching'});
-        const catalogResponse=await fetch(url+'/rest/v1/public_listings?select='+fields+'&order=created_at.desc&limit=201',{headers:{apikey:anon,Authorization:'Bearer '+anon},signal:controller.signal});
+        const catalogResponse=await fetch(url+'/rest/v1/public_listings?select='+fields+'&order=created_at.desc&limit=401',{headers:{apikey:anon,Authorization:'Bearer '+anon},signal:controller.signal});
         if(!catalogResponse.ok)throw new SearchError('CATALOG','暂时无法读取已发布房源，请稍后再试。');
         const all=await catalogResponse.json();if(!Array.isArray(all))throw new SearchError('CATALOG','房源数据暂时无法读取。');
-        if(all.length>200)throw new SearchError('CATALOG_LIMIT','房源较多，请先使用筛选缩小范围或联系招商顾问。');
+        if(all.length>400)throw new SearchError('CATALOG_LIMIT','房源较多，请先使用筛选缩小范围或联系招商顾问。');
         const catalog:Row[]=all.filter((r:Row)=>panelMatch(r,filters)).map((r:Row)=>{const costs=Fees.calculate(r.area,r.price,r.fee);return ({
-          ...Object.fromEntries(Object.entries(r).filter(([,v])=>v!==null&&v!=='').map(([k,v])=>[k,typeof v==='string'?v.slice(0,k==='description'?220:100):v])),
+          ...Object.fromEntries(Object.entries(r).filter(([,v])=>v!==null&&v!=='').map(([k,v])=>[k,typeof v==='string'?v.slice(0,k==='description'?160:80):v])),
           monthly_rent:costs.rentCents===null?null:costs.rentCents/100,
           monthly_property_fee:costs.feeCents===null?null:costs.feeCents/100,
           monthly_total:costs.totalCents===null?null:costs.totalCents/100,monthly_costs_text:verifiedCosts(r)

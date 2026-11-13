@@ -802,3 +802,24 @@ ul{list-style:none}
 .customer-avatar-field p{font-size:12px;color:var(--text-3);line-height:1.6;margin:8px 0 0}
 .customer-consent{display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.7;color:var(--text-2);margin-top:16px}
 .customer-consent input{flex:0 0 18px;width:18px;height:18px;margin:2px 0 0}
+
+/* ============================================================
+ * 客户账号（邮箱 + 密码登录）
+ * ============================================================ */
+.account-entry{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 12px;border-radius:12px;background:#F3F7FF;border:1px solid #DCE9FF}
+.account-entry.is-on{background:#F0FBF5;border-color:#D3F0E0}
+.account-entry-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.account-entry-text b{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-entry-text span{font-size:11.5px;color:var(--text-3);line-height:1.5}
+.account-entry .btn{flex:0 0 auto}
+.account-note{margin:10px 14px 0;padding:9px 12px;border-radius:10px;background:#F7FAFF;color:var(--text-3);font-size:11.5px;line-height:1.6}
+.account-tabs{margin:8px 0 4px}
+.account-link{background:none;border:0;color:var(--primary);font-size:12.5px;padding:4px 2px;font-family:inherit}
+.account-card{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;background:#F7FAFF;margin:8px 0 4px}
+.account-avatar{width:44px;height:44px;border-radius:50%;flex:0 0 44px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#4FA4FF,#1677FF);color:#fff;font-size:18px;font-weight:600}
+.account-card b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-card span{display:block;font-size:11.5px;color:var(--text-3);margin-top:3px}
+.account-done{padding:16px 2px;text-align:center}
+.account-done b{display:block;font-size:15px;margin-bottom:8px}
+.account-done p{font-size:12.5px;color:var(--text-2);line-height:1.7}
+.brand-badge.is-on{background:#ffffff22}

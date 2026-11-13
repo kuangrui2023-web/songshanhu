@@ -47,6 +47,12 @@
 
 在已有 visitor_intake.sql 后执行 visitor_withdraw.sql，增加基于回执的留言撤回功能。只设置撤回时间并移入回收站，不物理删除。撤回记录不再进入待处理列表，后台不可恢复为待回复；访客修改后重新提交生成新留言。
 
+### 客户邮箱账号（2026-11-13）
+
+在现有脚本之后执行 [customer_accounts.sql](customer_accounts.sql)，为 `inquiries` 增加 `user_id`，重写 `submit_site_inquiry` 以记录登录用户，并新增 `list_my_inquiries()` 供登录客户跨设备查看自己的留言。`list_my_inquiries` 仅返回 `auth.uid()` 所属、未删除的记录（最多 200 条），并包含回执，使现有基于回执的撤回/再次编辑逻辑无需改动；匿名角色无权执行。
+
+该脚本只做加法，不改写历史留言。执行后还需在 Authentication 关闭 Confirm email、配置 Site URL 与 `.../experience/reset.html` 回调地址、配置 SMTP（找回密码）。前台配置见 `docs/自己维护指南.md` 第 9 节。
+
 ## 全园区管理员升级
 
 在现有 setup / admin_workspace / visitor_withdraw 升级后执行 [admin_all_parks.sql](admin_all_parks.sql)，部署最新 admin-accounts 函数并发布前台。SQL 不会自动更改任何已有管理员的角色；由超管在网页设置中明确选择「全部园区（房源与留言）」。

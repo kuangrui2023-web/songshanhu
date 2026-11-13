@@ -3,7 +3,9 @@
   let opened=null,busy=null,done=null,redo=null,error='',owner=null;
   const reduced=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
   const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-  const own=id=>(Api.db.messages||[]).find(m=>m.id===id&&m.visitorId===State.session.visitor?.id);
+  const own=id=>(Api.db.messages||[]).find(m=>m.id===id&&m.visitorId===State.session.visitor?.id)
+    ||((window.SiteCustomerAuth?.current()&&(State.accountMessages||[]).find(m=>m.id===id&&m.accountOwned))||null);
+  const redoOwned=m=>!!m&&(m.accountOwned?!!window.SiteCustomerAuth?.current():m.visitorId===State.session.visitor?.id);
   const widget=id=>Array.from(document.querySelectorAll('.message-delete')).find(el=>el.dataset.messageDelete===id);
   const check='<path d="m5 12 4 4L19 6"/>';
   function buttonHTML(m){
@@ -44,15 +46,16 @@
   }
   async function confirm(id){
     const message=own(id);if(!message||busy||opened!==id)return;
-    const visitor=State.session.visitor.id;
+    const visitor=State.session.visitor?.id||null;
     busy=id;error='';update(id);
     try{
       await withdraw(message);
-      if(State.session.visitor?.id!==visitor)return;
+      if((State.session.visitor?.id||null)!==visitor)return;
       opened=null;done=id;busy=null;update(id);
       await wait(reduced()?150:950);
       // Only discard the local receipt after the server confirmed withdrawal.
       Api.db.messages=Api.db.messages.filter(m=>!(m.id===id&&m.visitorId===visitor));
+      if(message.accountOwned){State.accountMessages=(State.accountMessages||[]).filter(m=>m.id!==id);}
       if(message.requestSignature)intakeRequests.delete(message.requestSignature);
       const profile=curVisitor();
       if(profile?.companyReceipt===message.receipt){delete profile.companyReceipt;delete profile.companyAt;}
@@ -62,16 +65,16 @@
       const card=widget(id)?.closest('.msg-item');
       if(card?.animate&&!reduced())await card.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-8px)'}],{duration:280,easing:'ease-out',fill:'forwards'}).finished.catch(()=>{});
       done=null;
-      if(State.session.visitor?.id===visitor){refresh();document.querySelector('[data-message-action="redo"]')?.focus({preventScroll:true});}
+      if((State.session.visitor?.id||null)===visitor){refresh();document.querySelector('[data-message-action="redo"]')?.focus({preventScroll:true});}
     }catch(e){error=e.message||'撤回失败，请稍后重试';}
     finally{busy=null;update(id);}
   }
   function redoHTML(){
-    if(!redo||redo.visitorId!==State.session.visitor?.id)return '';
+    if(!redoOwned(redo))return '';
     return `<div class="message-redo" role="status"><div><b>${redo.receipt?'留言已删除并撤回':'本机记录已移除'}</b><p>可带回原文，改好后重新提交。</p></div><button type="button" class="op-btn pri" data-message-action="redo">修改后重新留言</button></div>`;
   }
   function editAgain(){
-    if(!redo||redo.visitorId!==State.session.visitor?.id)return;
+    if(!redoOwned(redo))return;
     if(redo.kind==='company'){
       sheetMyCompany();
       const fields={coName:'name',coIndustry:'industry',coProduct:'product',coIntro:'intro'};

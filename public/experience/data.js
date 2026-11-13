@@ -789,6 +789,10 @@ const State = {
   mapScale: 1, mapX: 0, mapY: 0, mapPark: null,
   tmap: null, tmapView: null, tmapFocus: null,   // 在线地图实例 / 视图记忆 / 待聚焦园区
   session: { visitor: null, admin: null, viewed: [] },
+  accountMessages: [],   // 登录账号的留言（只在内存，不写入本机缓存）
+  accountLoading: false,
+  accountError: '',
+  accountEmailDraft: '', // 登录面板切换视图时保留已输入的邮箱
   form: { photos: [], editId: null, replaceIdx: -1, photosTouched: false },
   pendingInquiry: null,   // 未登录时暂存的留言内容，登录后自动带出
   share: null             // 当前分享上下文

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#1677FF">
+<title>重置密码 · 松山湖产业招商网站</title>
+<link rel="icon" type="image/jpeg" href="../denglai-icon.jpg">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body{background:#F5F7FB}
+  .reset-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+  .reset-card{width:100%;max-width:400px;background:#fff;border-radius:18px;box-shadow:var(--shadow);padding:26px 20px 20px}
+  .reset-card h1{font-size:19px;font-weight:700;text-align:center;margin-bottom:6px}
+  .reset-sub{font-size:12.5px;color:var(--text-3);line-height:1.7;text-align:center;margin-bottom:8px}
+  .reset-card .field{border-bottom:1px solid var(--line)}
+  .reset-card .btn{width:100%;margin-top:16px}
+  .reset-back{text-align:center;margin-top:16px;font-size:12.5px}
+  .reset-back a{color:var(--primary)}
+  .inline-field-error{color:#c13e33;font-size:12px;line-height:1.6;margin-top:8px}
+  .reset-ok{font-size:13.5px;color:var(--text-2);line-height:1.8;text-align:center;margin:6px 0 18px}
+  .reset-link{display:block;text-align:center;line-height:44px;text-decoration:none}
+</style>
+</head>
+<body>
+<main class="reset-wrap">
+  <section class="reset-card" aria-labelledby="resetTitle">
+    <h1 id="resetTitle">重置密码</h1>
+    <p class="reset-sub" id="resetSub">正在读取重置链接…</p>
+
+    <form id="resetForm" hidden novalidate>
+      <div class="field"><label for="newPwd">新密码</label>
+        <input type="password" id="newPwd" minlength="8" maxlength="72" autocomplete="new-password" placeholder="至少 8 位"></div>
+      <div class="field"><label for="newPwd2">确认新密码</label>
+        <input type="password" id="newPwd2" minlength="8" maxlength="72" autocomplete="new-password" placeholder="再输入一次新密码"></div>
+      <p class="inline-field-error" id="resetError" role="alert" hidden></p>
+      <button class="btn" type="submit" id="resetSubmit">保存新密码</button>
+    </form>
+
+    <div id="resetDone" hidden>
+      <p class="reset-ok">密码已更新，现在可以用新密码登录网站了。</p>
+      <a class="btn reset-link" href="index.html">返回网站登录</a>
+    </div>
+
+    <p class="reset-back"><a href="index.html">返回网站</a></p>
+  </section>
+</main>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var config = window.__SITE_BACKEND__ || {};
+  var base = String(config.url || '').replace(/\/$/, '');
+  var key = String(config.key || '');
+  var $ = function (id) { return document.getElementById(id); };
+
+  var params = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+  var accessToken = params.get('access_token') || '';
+  var type = params.get('type') || '';
+  var linkError = params.get('error_description') || params.get('error') || '';
+  // 立刻清掉地址栏里的令牌，避免被历史记录或截图带走。
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+
+  var sub = $('resetSub'), form = $('resetForm'), submit = $('resetSubmit'), err = $('resetError');
+
+  function fail(message, field) {
+    err.textContent = message;
+    err.hidden = false;
+    if (field) field.focus();
+  }
+
+  function invalid(message) {
+    sub.textContent = message;
+    form.hidden = true;
+    $('resetDone').hidden = true;
+  }
+
+  if (!base || !key) { invalid('账号服务尚未连接，请返回网站稍后重试。'); return; }
+  if (linkError) { invalid('重置链接无效或已过期，请返回网站重新获取。'); return; }
+  if (!accessToken || (type && type !== 'recovery')) {
+    invalid('重置链接无效或已过期，请返回网站重新获取。');
+    return;
+  }
+
+  form.hidden = false;
+  sub.textContent = '请输入新密码（8 至 72 位）。';
+
+  form.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    err.hidden = true;
+    var p1 = $('newPwd').value, p2 = $('newPwd2').value;
+    if (p1.length < 8 || p1.length > 72) { fail('密码需为 8 至 72 位。', $('newPwd')); return; }
+    if (p1 !== p2) { fail('两次输入的密码不一致。', $('newPwd2')); return; }
+
+    submit.disabled = true;
+    submit.textContent = '保存中…';
+    try {
+      var response = await fetch(base + '/auth/v1/user', {
+        method: 'PUT',
+        headers: { apikey: key, Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: p1 })
+      });
+      var data = await response.json().catch(function () { return null; });
+      if (!response.ok) {
+        throw new Error((data && (data.msg || data.message || data.error_description)) || '密码未能保存，请重新获取重置邮件。');
+      }
+      // 用完即撤销这次重置用的登录令牌。
+      fetch(base + '/auth/v1/logout', {
+        method: 'POST',
+        headers: { apikey: key, Authorization: 'Bearer ' + accessToken }
+      }).catch(function () { });
+      accessToken = '';
+      form.hidden = true;
+      sub.textContent = '';
+      $('resetDone').hidden = false;
+    } catch (error) {
+      fail(error.message || '密码未能保存，请稍后重试。');
+    } finally {
+      submit.disabled = false;
+      submit.textContent = '保存新密码';
+    }
+  });
+})();
+</script>
+</body>
+</html>

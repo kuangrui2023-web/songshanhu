@@ -117,8 +117,8 @@
     }));
     if(results.some(x=>x.status==='fulfilled')){try{Api.save();saveSession();}catch(_){}if(State.view==='message')render();}
   };
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&State.view==='message')void window.refreshSiteReplies();});
-  setInterval(()=>{if(document.visibilityState==='visible'&&State.view==='message')void window.refreshSiteReplies();},30000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&State.view==='message'){void window.refreshSiteReplies();void window.refreshAccountMessages?.();}});
+  setInterval(()=>{if(document.visibilityState==='visible'&&State.view==='message'){void window.refreshSiteReplies();void window.refreshAccountMessages?.();}},30000);
   window.refreshSiteListings=refreshListings;
   window.addEventListener('online',()=>{if(State.listingsError)void refreshListings();});
   void record('visit',null);void refreshListings();

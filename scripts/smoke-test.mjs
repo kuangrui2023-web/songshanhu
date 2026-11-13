@@ -14,6 +14,7 @@ const baseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_UR
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const email = process.env.ADMIN_EMAIL || "";
 const password = process.env.ADMIN_PASSWORD || "";
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 if (!baseUrl || !anonKey) {
   console.error("缺少 Supabase 配置。");
@@ -153,7 +154,105 @@ if (email && password) {
   console.log("跳过后台检查（.env.local 没有 ADMIN_EMAIL / ADMIN_PASSWORD）");
 }
 
-// 7. 可选云函数：未部署时不算失败
+// 7. 客户邮箱账号：注册 → 提交 → 查询 → 撤回 → 权限隔离
+//    需要先在 Supabase 关闭 Confirm email 并执行 supabase/customer_accounts.sql；
+//    未完成配置时只打印信息，不算失败。
+// 用自己域名下的临时地址，避免 example.com 被 Supabase 判为无效邮箱。
+const customerEmail = `smoke+${Date.now()}@denglai.xin`;
+const customerPassword = "SmokeTest-" + randomUUID().slice(0, 8);
+const signup = await fetch(`${baseUrl}/auth/v1/signup`, {
+  method: "POST",
+  headers: { apikey: anonKey, "Content-Type": "application/json" },
+  body: JSON.stringify({ email: customerEmail, password: customerPassword })
+});
+const signupData = await signup.json().catch(() => null);
+const customerToken = signupData?.access_token || null;
+// 关闭 Confirm email 时返回 {access_token,user}；未关闭时直接返回用户对象。
+const customerUserId = signupData?.user?.id || signupData?.id || null;
+
+async function removeTestCustomer(inquiryId) {
+  if (!serviceKey) {
+    console.log(`信息  未提供 service key，自检账号 ${customerEmail} 需要手动删除`);
+    return;
+  }
+  if (inquiryId) {
+    await fetch(`${baseUrl}/rest/v1/inquiries?id=eq.${inquiryId}`, {
+      method: "DELETE",
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+    }).catch(() => {});
+  }
+  if (customerUserId) {
+    await fetch(`${baseUrl}/auth/v1/admin/users/${customerUserId}`, {
+      method: "DELETE",
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+    }).catch(() => {});
+  }
+  console.log("信息  已清理自检客户账号与留言");
+}
+
+if (!customerToken) {
+  console.log(`信息  客户账号自检跳过：注册返回 ${signup.status}${signupData?.msg ? "（" + signupData.msg + "）" : ""}。请确认 Supabase 已关闭 Confirm email；若邮箱被判无效，检查脚本里的测试域名。`);
+  await removeTestCustomer(null);
+} else {
+  record("客户邮箱注册", true, customerEmail);
+
+  // 数据库尚未执行新脚本时，list_my_inquiries 会返回 404。
+  const probe = await call("/rest/v1/rpc/list_my_inquiries", { method: "POST", token: customerToken, body: {} });
+  if (probe.status === 404 || probe.status === 400) {
+    console.log("信息  list_my_inquiries 尚不可用，请先在 Supabase 执行 supabase/customer_accounts.sql；跳过账号留言检查。");
+    await removeTestCustomer(null);
+  } else {
+    record("账号留言接口可用", probe.ok, `${probe.status}`);
+
+    const testPhone = "137" + String(Math.floor(10000000 + Math.random() * 89999999));
+    const customerInquiry = await call("/rest/v1/rpc/submit_site_inquiry", {
+      method: "POST",
+      token: customerToken,
+      body: {
+        p_payload: {
+          kind: "inquiry",
+          consent: true,
+          client_request_id: randomUUID(),
+          listing_id: sample?.id || null,
+          company: "自检测试企业",
+          contact: "客户账号自检",
+          phone: testPhone,
+          request_text: "客户账号自检留言，脚本结束时撤回并删除。"
+        }
+      }
+    });
+    record("登录客户提交留言", customerInquiry.ok, customerInquiry.ok ? "已归入账号" : JSON.stringify(customerInquiry.data).slice(0, 120));
+
+    const inquiryId = customerInquiry.data?.id || null;
+    const receipt = customerInquiry.data?.receipt || null;
+
+    if (customerInquiry.ok) {
+      const mine = await call("/rest/v1/rpc/list_my_inquiries", { method: "POST", token: customerToken, body: {} });
+      const rows = Array.isArray(mine.data) ? mine.data : [];
+      const hit = rows.find((row) => row.id === inquiryId);
+      record("账号可见自己的留言", mine.ok && Boolean(hit), `${rows.length} 条`);
+      record("账号留言含用于撤回的回执", Boolean(hit?.receipt), hit?.receipt ? "有" : "无");
+
+      const denied = await call("/rest/v1/rpc/list_my_inquiries", { method: "POST", token: anonKey, body: {} });
+      record("未登录不能读取账号留言", denied.status === 401 || denied.status === 403, `${denied.status}`);
+
+      const withdraw = await call("/rest/v1/rpc/withdraw_site_inquiry", {
+        method: "POST",
+        token: customerToken,
+        body: { p_id: inquiryId, p_receipt: receipt }
+      });
+      record("登录客户可撤回留言", withdraw.ok && withdraw.data?.withdrawn === true, `${withdraw.status}`);
+
+      const after = await call("/rest/v1/rpc/list_my_inquiries", { method: "POST", token: customerToken, body: {} });
+      const stillThere = (Array.isArray(after.data) ? after.data : []).some((row) => row.id === inquiryId);
+      record("撤回后账号列表不再显示", after.ok && !stillThere, `${after.status}`);
+    }
+
+    await removeTestCustomer(inquiryId);
+  }
+}
+
+// 8. 可选云函数：未部署时不算失败
 const ai = await call("/functions/v1/ai-search", { method: "POST", body: { query: "1000平米厂房" } });
 console.log(`信息  AI 找房云函数：${ai.status}${ai.ok ? "（已部署）" : "（未部署，前台会提示暂不可用，不影响浏览）"}`);
 

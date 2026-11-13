@@ -479,7 +479,47 @@ function renderDetail() {
   </aside>
   </div>`;
 }
+function messageRowHTML(m) {
+  const l = findListing(m.listingId);
+  const title = l ? publicListingTitle(l) : (m.listingTitle || (m.kind === 'company' ? '企业资料登记' : m.kind === 'need' ? '选址需求登记' : '一般咨询／房源已下架'));
+  return `
+    <div class="msg-item" data-message-id="${esc(m.id)}">
+      <div class="msg-top">
+        <div class="msg-listing" ${l ? `data-act="open:listing" data-id="${m.listingId}"` : ''}>${esc(title)}</div>
+        <span class="msg-status ${m.status === 'pending' ? 'pending' : 'done'}">${m.status === 'pending' ? '待回复' : m.status === 'closed' ? '已完成' : '已回复'}</span>
+      </div>
+      <div class="msg-body">【${esc(m.type)}】${esc(m.content)}</div>
+      ${m.reply ? `<div class="msg-reply"><b>招商顾问回复：</b>${esc(m.reply)}</div>` : ''}
+      <div class="msg-meta"><span>${esc(m.createdAt)}</span><span>联系方式 ${esc(maskPhone(m.phone))}</span></div>
+      ${window.SiteMessageActions?.buttonHTML(m) || ''}
+    </div>`;
+}
+
 function renderMessage() {
+  const account = window.SiteCustomerAuth?.current();
+  if (account) {
+    const list = (State.accountMessages || []).slice()
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const pending = list.filter(m => m.status === 'pending').length;
+    const email = account.user.email || '账号';
+    return `
+  <div class="pad" style="padding-top:14px">
+    <div class="card" style="padding:13px;display:flex;align-items:center;gap:12px">
+      <div class="contact-avatar" style="background:linear-gradient(135deg,#4FA4FF,#1677FF)">${esc(email.slice(0, 1).toUpperCase())}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(email)}</div>
+        <div style="font-size:11.5px;color:var(--text-3);margin-top:3px">已登录 · 共 ${list.length} 条留言 · ${pending} 条待回复</div>
+      </div>
+    </div>
+  </div>
+  <div class="account-note">这里只显示登录后提交的留言；换一台设备登录同一邮箱，也能看到回复。</div>
+  ${window.SiteMessageActions?.redoHTML() || ''}
+  ${State.accountLoading && !list.length ? '<div class="empty">正在读取账号留言…</div>'
+    : State.accountError && !list.length ? `<div class="empty">${esc(State.accountError)}<br><button type="button" class="result-reset" data-act="account:reload">重新加载</button></div>`
+    : list.length ? list.map(messageRowHTML).join('')
+    : '<div class="empty">这个账号还没有留言，去房源列表看看吧</div>'}
+  <div style="height:8px"></div>`;
+  }
   const v = State.session.visitor;
   if (!v) {
     return `<div class="empty" style="padding-top:80px">
@@ -502,20 +542,7 @@ function renderMessage() {
     </div>
   </div>
   ${window.SiteMessageActions?.redoHTML() || ''}
-  ${list.length ? list.map(m => {
-    const l = findListing(m.listingId);
-    return `
-    <div class="msg-item" data-message-id="${esc(m.id)}">
-      <div class="msg-top">
-        <div class="msg-listing" ${l ? `data-act="open:listing" data-id="${m.listingId}"` : ''}>${l ? esc(publicListingTitle(l)) : m.kind === 'company' ? '企业资料登记' : m.kind === 'need' ? '选址需求登记' : '一般咨询／房源已下架'}</div>
-        <span class="msg-status ${m.status === 'pending' ? 'pending' : 'done'}">${m.status === 'pending' ? '待回复' : m.status === 'closed' ? '已完成' : '已回复'}</span>
-      </div>
-      <div class="msg-body">【${esc(m.type)}】${esc(m.content)}</div>
-      ${m.reply ? `<div class="msg-reply"><b>招商顾问回复：</b>${esc(m.reply)}</div>` : ''}
-      <div class="msg-meta"><span>${esc(m.createdAt)}</span><span>联系方式 ${esc(maskPhone(m.phone))}</span></div>
-      ${window.SiteMessageActions?.buttonHTML(m) || ''}
-    </div>`;
-  }).join('') : '<div class="empty">还没有咨询记录，去房源列表看看吧</div>'}
+  ${list.length ? list.map(messageRowHTML).join('') : '<div class="empty">还没有咨询记录，去房源列表看看吧</div>'}
   <div style="height:8px"></div>`;
 }
 
@@ -523,7 +550,8 @@ function renderMessage() {
 function renderMine() {
   const v = curVisitor();
   const adm = State.session.admin;
-  const myMsgs = v ? Api.db.messages.filter(m => m.visitorId === v.id) : [];
+  const account = window.SiteCustomerAuth?.current();
+  const myMsgs = account ? (State.accountMessages || []) : (v ? Api.db.messages.filter(m => m.visitorId === v.id) : []);
   const viewed = (State.session.viewed || []).length;
   return `
   <div class="mine-head">
@@ -535,6 +563,13 @@ function renderMine() {
         ${v?.customerCode ? `<div class="mine-sub">客户编号：${esc(v.customerCode)}</div>` : ''}
       </div>
       <button class="btn sm" style="background:#fff;color:var(--primary)" type="button" data-act="open:login">${v?'编辑资料':'填写资料'}</button>
+    </div>
+    <div class="account-entry${account ? ' is-on' : ''}">
+      <div class="account-entry-text">
+        <b>${account ? esc(account.user.email) : '登录 / 注册账号'}</b>
+        <span>${account ? '已登录，登录后提交的留言会自动同步' : '换设备后仍能查看登录后提交的留言与回复'}</span>
+      </div>
+      <button class="btn sm ${account ? 'ghost' : ''}" type="button" data-act="open:account">${account ? '账号' : '去登录'}</button>
     </div>
   </div>
 
@@ -576,13 +611,17 @@ function renderMine() {
       <div class="menu-ico">⚙️</div>
       <div class="mi-text">设置</div><div class="mi-arrow">›</div>
     </button>
+    ${account ? `<div class="menu-item" data-act="account:logout">
+        <div class="menu-ico" style="background:#EEF1F6;color:var(--text-3)">⎋</div>
+        <div class="mi-text">退出登录</div><div class="mi-arrow">›</div>
+      </div>` : ''}
     ${v ? `<div class="menu-item" data-act="visitor:logout">
         <div class="menu-ico" style="background:#EEF1F6;color:var(--text-3)">⎋</div>
         <div class="mi-text">清除本机资料</div><div class="mi-arrow">›</div>
       </div>` : ''}
   </div>
   <div style="text-align:center;font-size:11px;color:var(--text-3);padding:18px 0 6px;line-height:1.7">
-    松山湖产业招商网站<br>房源、咨询及已提交的企业／需求资料保存在云端<br>本机保留查询回执，用于查看回复
+    松山湖产业招商网站<br>房源、咨询及已提交的企业／需求资料保存在云端<br>登录后提交的留言归入账号；本机回执用于查看未登录时的回复
   </div>`;
 }
 
@@ -1340,7 +1379,7 @@ function setView(name, push, navigation = {}) {
   const pageMotion = window.SitePages?.prepare(previousView, name, push, navigation);
   if (push && State.view !== name) State.stack.push({ v: State.view, p: Object.assign({}, State.params), scrollTop: $('#view-' + State.view)?.scrollTop || 0 });
   State.view = name;
-  if (name === 'message') window.refreshSiteReplies?.();
+  if (name === 'message') { window.refreshSiteReplies?.(); void loadAccountMessages(false); }
   const isTab = TAB_VIEWS.indexOf(name) > -1;
   $$('.view').forEach(el => el.classList.remove('active'));
   const el = $('#view-' + name);
@@ -1394,8 +1433,10 @@ function renderTabbar() {
   const bar = $('#tabbar');
   bar.classList.toggle('hide', !isTab);
   if (!isTab) return;
-  const pending = State.session.visitor
-    ? Api.db.messages.filter(m => m.visitorId === State.session.visitor.id && m.status === 'pending').length : 0;
+  const pending = window.SiteCustomerAuth?.current()
+    ? (State.accountMessages || []).filter(m => m.status === 'pending').length
+    : State.session.visitor
+      ? Api.db.messages.filter(m => m.visitorId === State.session.visitor.id && m.status === 'pending').length : 0;
   const items = [
     { k: 'home', t: '首页' }, { k: 'message', t: '留言' }, { k: 'mine', t: '我的' }
   ];
@@ -1417,6 +1458,7 @@ function renderTabbar() {
     button.setAttribute('aria-label', items.find(it => it.k === button.dataset.v).t + (count ? '，'+count+'条待处理留言' : ''));
   });
   window.SiteTabs?.sync();
+  updateAccountBadge();
 }
 
 /* 打开房源详情（列表卡片、地图标记、留言关联等处统一复用） */
@@ -1453,7 +1495,7 @@ function render() {
   if (State.view === 'admin') bindAdmin();
   if (State.view === 'admin' && State.adminTab === 'map') bindAnnotateMap();
 }
-function refresh() { render(); renderTabbar(); }
+function refresh() { render(); renderTabbar(); updateAccountBadge(); }
 
 /* ---------------- 局部绑定 ---------------- */
 function bindHome() { window.HomeSearch?.bind(); }
@@ -1728,13 +1770,19 @@ const intakeRequests = new Map();
 async function sendVisitorIntake(payload) {
   const config=window.__SITE_BACKEND__||{};
   if(!config.url||!config.key)throw new Error('提交服务尚未连接，请稍后重试');
+  // 已登录时用账号 token 提交，留言会归入账号；匿名时仍用公开 key。
+  let token=null;
+  if(window.SiteCustomerAuth?.current()){
+    token=await window.SiteCustomerAuth.accessToken();
+    if(!token)throw new Error('登录已过期，请重新登录后再提交。填写内容已保留');
+  }
   const signature=JSON.stringify(payload);
   if(!intakeRequests.has(signature))intakeRequests.set(signature,crypto.randomUUID());
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),30000);
   try {
     const response=await fetch(String(config.url).replace(/\/$/,'')+'/rest/v1/rpc/submit_site_inquiry',{
       method:'POST',signal:controller.signal,
-      headers:{apikey:config.key,Authorization:'Bearer '+config.key,'Content-Type':'application/json'},
+      headers:{apikey:config.key,Authorization:'Bearer '+(token||config.key),'Content-Type':'application/json'},
       body:JSON.stringify({p_payload:{...payload,client_request_id:intakeRequests.get(signature)}})
     });
     const result=await response.json().catch(()=>null);
@@ -1786,6 +1834,7 @@ async function submitInquiry(listingId) {
     const saved=storeVisitorReceipt(delivered,visitor,payload,type,content);
     delete document.querySelector('[data-act="submit:inquiry"]').dataset.pending;closeSheet();
     window.SiteMotion?.success(saved?'留言已送达，可在「留言咨询」查看处理结果':'留言已送达，但本机记录未保存，请保留联系方式等待顾问联系');setTimeout(refresh,60);
+    if(window.SiteCustomerAuth?.current())void loadAccountMessages(true);
   });
 }
 
@@ -1878,6 +1927,228 @@ async function submitVisitorLogin() {
     setTimeout(() => sheetInquiry(pending.listingId, pending.type, pending), 120);
   }
 }
+
+/* ---------------- 客户账号（邮箱 + 密码） ----------------
+ * 登录后提交的留言会带上账号身份；留言列表以服务端为准，
+ * 匿名留言仍只看本机回执，两者互不冒领。 */
+function accountMessageFromRow(row) {
+  const raw = String(row.request_text || '');
+  const match = /^【([^】]{1,20})】([\s\S]*)$/.exec(raw);
+  const kind = row.kind || 'inquiry';
+  const type = match ? match[1] : (kind === 'company' ? '企业资料' : kind === 'need' ? '选址需求' : '在线咨询');
+  const content = match ? match[2] : raw;
+  return {
+    id: row.id,
+    receipt: row.receipt,
+    details: row.details || {},
+    listingId: row.listing_id || null,
+    listingTitle: row.listing_title || '',
+    visitorId: null,
+    accountOwned: true,
+    name: row.contact || '',
+    phone: row.phone || '',
+    type, kind, content,
+    createdAt: fmtDateTime(new Date(row.created_at)),
+    status: row.status || 'pending',
+    reply: row.reply || '',
+    repliedAt: row.replied_at || ''
+  };
+}
+
+let accountLoadedAt = 0;
+async function loadAccountMessages(force) {
+  const auth = window.SiteCustomerAuth;
+  if (!auth || !auth.current()) {
+    State.accountMessages = []; State.accountLoading = false; State.accountError = '';
+    return [];
+  }
+  if (!force && Date.now() - accountLoadedAt < 12000) return State.accountMessages;
+  accountLoadedAt = Date.now();
+  State.accountLoading = true;
+  State.accountError = '';
+  if (State.view === 'message') render();
+  try {
+    const rows = await auth.listMyInquiries();
+    State.accountMessages = rows.map(accountMessageFromRow);
+    return State.accountMessages;
+  } catch (error) {
+    State.accountError = error.message || '账号留言读取失败，请稍后重试。';
+    return State.accountMessages;
+  } finally {
+    State.accountLoading = false;
+    if (State.view === 'message' || State.view === 'mine') refresh();
+    else renderTabbar();
+  }
+}
+window.refreshAccountMessages = () => loadAccountMessages(false);
+
+function accountMaskedEmail(email) {
+  const value = String(email || '');
+  const at = value.indexOf('@');
+  if (at < 1) return value || '账号';
+  return value.slice(0, 2) + '***' + value.slice(at);
+}
+
+function updateAccountBadge() {
+  const button = document.getElementById('accountButton');
+  if (!button) return;
+  const account = window.SiteCustomerAuth?.current();
+  if (account) {
+    button.textContent = accountMaskedEmail(account.user.email);
+    button.setAttribute('aria-label', '账号 ' + (account.user.email || '') + '，点击查看');
+    button.title = account.user.email || '';
+    button.classList.add('is-on');
+  } else {
+    button.textContent = '登录';
+    button.setAttribute('aria-label', '登录或注册账号');
+    button.removeAttribute('title');
+    button.classList.remove('is-on');
+  }
+}
+
+function accountPanelHTML(account) {
+  return `
+    <div class="sheet-head"><h3>我的账号</h3><button class="sheet-close" type="button" data-act="close:sheet">✕</button></div>
+    <div class="sheet-body">
+      <div class="account-card">
+        <div class="account-avatar">${esc((account.user.email || 'A').slice(0, 1).toUpperCase())}</div>
+        <div style="min-width:0">
+          <b>${esc(account.user.email)}</b>
+          <span>已登录 · 留言与回复已同步到账号</span>
+        </div>
+      </div>
+      <div class="menu-list" style="margin:0 -16px">
+        <div class="menu-item" data-act="account:messages">
+          <div class="menu-ico">💬</div><div class="mi-text">我的留言</div>
+          <div class="mi-val">${(State.accountMessages || []).length} 条</div><div class="mi-arrow">›</div>
+        </div>
+        <div class="menu-item" data-act="account:logout">
+          <div class="menu-ico" style="background:#EEF1F6;color:var(--text-3)">⎋</div>
+          <div class="mi-text">退出登录</div><div class="mi-arrow">›</div>
+        </div>
+      </div>
+      <div class="code-hint">退出登录后需要重新输入邮箱和密码；本机浏览器保存的匿名留言回执仍然保留。</div>
+    </div>`;
+}
+
+function sheetAccount(view) {
+  const account = window.SiteCustomerAuth?.current();
+  let mode = view || (account ? 'account' : 'login');
+  if (mode === 'account' && !account) mode = 'login';
+  State.accountSheetView = mode;
+  if (mode === 'account') { openSheet(accountPanelHTML(account)); return; }
+  const draft = State.accountEmailDraft || '';
+  const isLogin = mode !== 'signup' && mode !== 'recover';
+  const isRecover = mode === 'recover';
+  openSheet(`
+    <div class="sheet-head"><h3>${isRecover ? '找回密码' : '登录 / 注册'}</h3><button class="sheet-close" type="button" data-act="close:sheet">✕</button></div>
+    <div class="sheet-body">
+      ${isRecover ? '' : `<div class="seg account-tabs">
+        <button type="button" class="${isLogin ? 'on' : ''}" data-act="account:view" data-v="login">登录</button>
+        <button type="button" class="${!isLogin ? 'on' : ''}" data-act="account:view" data-v="signup">注册</button>
+      </div>`}
+      <div class="field"><label for="accEmail">邮箱</label>
+        <input type="email" id="accEmail" maxlength="254" autocomplete="email" inputmode="email" value="${esc(draft)}" placeholder="name@example.com"></div>
+      ${isRecover ? '' : `<div class="field"><label for="accPassword">密码</label>
+        <input type="password" id="accPassword" maxlength="72" autocomplete="${isLogin ? 'current-password' : 'new-password'}" placeholder="至少 8 位"></div>`}
+      ${mode === 'signup' ? `<div class="field"><label for="accConfirm">确认密码</label>
+        <input type="password" id="accConfirm" maxlength="72" autocomplete="new-password" placeholder="再输入一次密码"></div>` : ''}
+      ${isLogin ? `<div style="text-align:right;margin-top:2px"><button type="button" class="account-link" data-act="account:view" data-v="recover">忘记密码？</button></div>` : ''}
+      ${isRecover ? `<div class="code-hint">输入注册时使用的邮箱，我们会发送一封重置密码的邮件，请同时检查垃圾邮件箱。</div>
+        <div style="text-align:center;margin-top:10px"><button type="button" class="account-link" data-act="account:view" data-v="login">返回登录</button></div>`
+        : mode === 'signup' ? `<div class="code-hint">注册后即可直接使用，无需邮箱验证；请填写真实可收信的邮箱，忘记密码时用来找回。</div>`
+        : `<div class="code-hint">登录后提交的留言会保存到账号，换手机或电脑也能查看回复。</div>`}
+    </div>
+    <div class="sheet-foot">
+      <button class="btn gray" style="flex:0 0 96px" type="button" data-act="close:sheet">取消</button>
+      <button class="btn" type="button" data-act="account:submit" data-v="${mode}">${isRecover ? '发送重置邮件' : isLogin ? '登录' : '注册并登录'}</button>
+    </div>`);
+}
+
+function accountNoticeHTML(title, text) {
+  return `
+    <div class="sheet-head"><h3>${esc(title)}</h3><button class="sheet-close" type="button" data-act="close:sheet">✕</button></div>
+    <div class="sheet-body"><div class="account-done"><b>${esc(title)}</b><p>${esc(text)}</p></div></div>
+    <div class="sheet-foot"><button class="btn" type="button" data-act="close:sheet">知道了</button></div>`;
+}
+
+async function submitAccount(view) {
+  const button = document.querySelector('[data-act="account:submit"]');
+  if (!button || button.disabled) return;
+  const auth = window.SiteCustomerAuth;
+  if (!auth) { toast('账号功能暂不可用'); return; }
+  const email = ($('#accEmail')?.value || '').trim();
+  State.accountEmailDraft = email;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return window.SiteMotion?.fieldError('accEmail', '请填写正确的邮箱地址');
+  const password = ($('#accPassword')?.value || '');
+  if (view !== 'recover') {
+    if (password.length < 8 || password.length > 72) return window.SiteMotion?.fieldError('accPassword', '请填写 8 至 72 位密码');
+    if (view === 'signup' && ($('#accConfirm')?.value || '') !== password) return window.SiteMotion?.fieldError('accConfirm', '两次输入的密码不一致');
+  }
+
+  if (view === 'recover') {
+    await intakeForm(button, async () => {
+      await auth.recover(email);
+      delete button.dataset.pending;
+      openSheet(accountNoticeHTML('请查收重置邮件', '如果 ' + email + ' 已注册，几分钟内会收到一封重置密码的邮件。请同时检查垃圾邮件箱。'));
+      toast('重置邮件已发送，请查收');
+    });
+    return;
+  }
+
+  await intakeForm(button, async () => {
+    if (view === 'login') {
+      await auth.signIn(email, password);
+      State.accountEmailDraft = '';
+      delete button.dataset.pending;
+      closeSheet();
+      toast('已登录');
+      refresh();
+      void loadAccountMessages(true);
+      return;
+    }
+    const result = await auth.signUp(email, password);
+    delete button.dataset.pending;
+    if (result.needsConfirm) {
+      openSheet(accountNoticeHTML('注册成功，请验证邮箱', '我们已向 ' + email + ' 发送验证邮件，完成验证后即可登录。'));
+      return;
+    }
+    State.accountEmailDraft = '';
+    closeSheet();
+    toast('注册成功，已登录');
+    refresh();
+    void loadAccountMessages(true);
+  });
+}
+
+function accountLogout() {
+  dialog({
+    title: '退出登录',
+    text: '退出后需要重新输入邮箱和密码；本机浏览器保存的匿名留言回执仍然保留。确定退出吗？',
+    okText: '退出登录',
+    onOk: async () => {
+      await window.SiteCustomerAuth?.signOut();
+      State.accountMessages = []; State.accountError = ''; State.accountEmailDraft = '';
+      closeSheet();
+      refresh();
+      toast('已退出登录');
+    }
+  });
+}
+
+/* 登录状态变化：清空幂等缓存（auth.uid() 变了），刷新账号留言与界面。 */
+window.addEventListener('songshanhu:authchange', event => {
+  const reason = event.detail && event.detail.reason;
+  if (reason === 'refresh') { updateAccountBadge(); return; }
+  intakeRequests.clear();
+  updateAccountBadge();
+  if (!window.SiteCustomerAuth?.current()) {
+    State.accountMessages = []; State.accountError = ''; accountLoadedAt = 0;
+  } else {
+    void loadAccountMessages(true);
+  }
+  if (State.view === 'message' || State.view === 'mine') refresh();
+});
 
 function reloadSession() {
   const s = Api.getSession();
@@ -2011,6 +2282,7 @@ async function submitMyCompany() {
     if(saved)clearCompanyDraft(v.id);
     delete document.querySelector('[data-act="submit:myCompany"]').dataset.pending;closeSheet();
     toast(saved?'企业资料已送达后台，可在留言咨询查看回复':'企业资料已送达，本机记录未保存，请等待顾问联系');setTimeout(refresh,60);
+    if(window.SiteCustomerAuth?.current())void loadAccountMessages(true);
   });
 }
 
@@ -2066,6 +2338,7 @@ async function addMyNeed() {
     const saved=storeVisitorReceipt(delivered,v,payload,'选址需求',content);
     delete document.querySelector('[data-act="add:myNeed"]').dataset.pending;closeSheet();
     toast(saved?'需求已送达后台，可在留言咨询查看回复':'需求已送达，本机记录未保存，请等待顾问联系');setTimeout(refresh,60);
+    if(window.SiteCustomerAuth?.current())void loadAccountMessages(true);
   });
 }
 
@@ -3451,8 +3724,21 @@ document.addEventListener('click', e => {
       openListing(id);
       break;
 
+    /* 客户账号 */
+    case 'login:pending':
+    case 'open:account': sheetAccount(); break;
+    case 'account:view': {
+      const typed = ($('#accEmail')?.value || '').trim();
+      if (typed) State.accountEmailDraft = typed;
+      sheetAccount(v);
+      break;
+    }
+    case 'account:submit': void submitAccount(v); break;
+    case 'account:reload': void loadAccountMessages(true); break;
+    case 'account:messages': closeSheet(); setView('message', true); break;
+    case 'account:logout': accountLogout(); break;
+
     /* 搜索与筛选 */
-    case 'login:pending': toast('登录功能暂未开放'); break;
     case 'search:submit': void window.HomeSearch?.submit(); break;
     case 'search:quick': window.HomeSearch?.fill(v); break;
     case 'search:retry': void window.HomeSearch?.retry(); break;
@@ -3965,6 +4251,10 @@ function boot() {
   reloadSession();
   State.session.admin = null;
   Api.logVisit();
+  if (window.SiteCustomerAuth?.current()) {
+    updateAccountBadge();
+    void loadAccountMessages(true);
+  }
   applyDeepListing();
   applyShareMeta();
   if (State.session.admin) State.adminTab = 'listing';

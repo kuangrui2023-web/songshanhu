@@ -8,7 +8,7 @@ const Fees = (globalThis as unknown as {SiteFees:{
   feeMode(query:unknown):boolean|null;
 }}).SiteFees;
 // DeepSeek is called only here. Browser receives public listing IDs and text.
-const allowedOrigins = new Set(['https://ning73988-jpg.github.io','https://songshanhu-enterprise-spaces.pages.dev','https://denglai.xin','https://www.denglai.xin','http://127.0.0.1:5183']);
+const allowedOrigins = new Set(['https://kuangrui2023-web.github.io','https://ning73988-jpg.github.io','https://songshanhu-enterprise-spaces.pages.dev','https://denglai.xin','https://www.denglai.xin','http://localhost:3000','http://127.0.0.1:3000','http://127.0.0.1:5183']);
 type Row = Record<string, unknown>;
 class SearchError extends Error { constructor(public code:string,message:string,public status=503){super(message);} }
 const text=(value:unknown,max=160)=>typeof value==='string'?value.slice(0,max):'';
@@ -116,8 +116,8 @@ Deno.serve(async(request:Request)=>{
         });});
         if(!catalog.length){send('result',{provider:'DeepSeek',model:null,reply:'当前筛选范围没有已发布房源，请清除部分筛选条件后重试。',ids:[],matches:[],summary:[],calledModel:false});return;}
         send('stage',{state:'thinking'});
-        const model=Deno.env.get('DEEPSEEK_MODEL')||'deepseek-flash';
-        const upstream=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model,messages:[{role:'system',content:systemPrompt},{role:'user',content:JSON.stringify({previous_questions:history,question:query,selected_filters:filters,catalog})}],thinking:{type:'disabled'},response_format:{type:'json_object'},max_tokens:1800,temperature:0.2,stream:false}),signal:controller.signal});
+        const model=Deno.env.get('DEEPSEEK_MODEL')||'deepseek-chat';
+        const upstream=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model,messages:[{role:'system',content:systemPrompt},{role:'user',content:JSON.stringify({previous_questions:history,question:query,selected_filters:filters,catalog})}],response_format:{type:'json_object'},max_tokens:1800,temperature:0.2,stream:false}),signal:controller.signal});
         if(!upstream.ok){
           await upstream.body?.cancel();
           if(upstream.status===401)throw new SearchError('PROVIDER_AUTH','DeepSeek 密钥无效，请网站负责人检查服务端密钥。');

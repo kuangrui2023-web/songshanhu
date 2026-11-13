@@ -27,14 +27,26 @@ jobs:
 
       - run: npm ci
 
+      # 缺配置时直接失败并给出中文提示，避免构建出一个打不开数据的空站。
+      - name: 检查 Supabase 配置
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::缺少 NEXT_PUBLIC_SUPABASE_URL 或 NEXT_PUBLIC_SUPABASE_ANON_KEY。请在 Settings → Secrets and variables → Actions 添加，Secret 或 Variable 都可以。"
+            exit 1
+          fi
+          echo "Supabase 配置已就绪：$SUPABASE_URL"
+
       # 直接从当前源码构建静态站点，不再解压任何 tar.gz 包。
       # 站点部署在 https://<账号>.github.io/<仓库名>/，basePath 自动取仓库名。
       - run: npm run build
         env:
           GITHUB_PAGES: 'true'
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_AMAP_KEY: ${{ vars.NEXT_PUBLIC_AMAP_KEY }}
           NEXT_PUBLIC_AMAP_SERVICE_HOST: ${{ vars.NEXT_PUBLIC_AMAP_SERVICE_HOST }}
 

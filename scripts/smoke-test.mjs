@@ -253,8 +253,12 @@ if (!customerToken) {
 }
 
 // 8. 可选云函数：未部署时不算失败
-const ai = await call("/functions/v1/ai-search", { method: "POST", body: { query: "1000平米厂房" } });
-console.log(`信息  AI 找房云函数：${ai.status}${ai.ok ? "（已部署）" : "（未部署，前台会提示暂不可用，不影响浏览）"}`);
+const ai = await call("/functions/v1/ai-search", {
+  method: "POST",
+  body: { query: "1000平米厂房", history: [], filters: {} },
+  headers: { Origin: "https://kuangrui2023-web.github.io" }
+});
+console.log(`信息  AI 找房云函数：${ai.status}${ai.ok ? "（已部署）" : "（未部署或未配置，前台会提示暂不可用，不影响浏览）"}`);
 
 const failed = results.filter((item) => !item.ok);
 console.log(`\n共 ${results.length} 项，通过 ${results.length - failed.length} 项，失败 ${failed.length} 项。`);

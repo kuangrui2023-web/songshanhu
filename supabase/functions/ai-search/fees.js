@@ -45,7 +45,7 @@
   function feeMode(query) {
     const value = String(query || '').replace(/\s/g, '');
     if (/不(?:包)?含(?:物业|管理)费?|(?:物业|管理)费另计/.test(value)) return false;
-    if (/(?:包)?含(?:物业|管理)费?|(?:租金|房租)加(?:物业|管理)费?|(?:物业|管理)费?.*合计|总预算|总费用/.test(value)) return true;
+    if (/(?:包)?含(?:物业|管理)费?|(?:月租|租金|房租)加(?:物业|管理)费?|(?:物业|管理)费?.*合计|总预算|总费用/.test(value)) return true;
     if (/月租|月预算/.test(value)) return false;
     return null;
   }

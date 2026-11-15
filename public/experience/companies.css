@@ -1,0 +1,102 @@
+/* ================= 入驻企业名录 ================= */
+/* 前台只展示打码后的字段：真实法人、电话、邮箱、统一代码留在数据库里，
+   匿名用户拿到的是 public_companies 视图算好的脱敏值。 */
+
+.company-home{margin:18px 0 8px;padding:0 14px}
+.company-home-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+.company-home-head h2{font-size:16px;font-weight:700;color:var(--text)}
+.company-home-head button{font-size:12px;color:var(--primary);font-weight:600;white-space:nowrap}
+.company-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.company-summary div{background:var(--card);border-radius:var(--radius-s);padding:11px 12px;box-shadow:var(--shadow)}
+.company-summary b{display:block;font-size:19px;font-weight:700;color:var(--text);line-height:1.25}
+.company-summary span{font-size:11px;color:var(--text-3)}
+.company-industry-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.company-industry-chips button{font-size:12px;color:var(--text-2);background:var(--card);border-radius:999px;padding:6px 11px;box-shadow:var(--shadow);white-space:nowrap}
+.company-industry-chips button:active{background:var(--primary-l);color:var(--primary)}
+.company-home-list{display:flex;flex-direction:column;gap:8px}
+.company-home-more{width:100%;margin-top:10px;padding:11px;border-radius:var(--radius-s);background:var(--card);color:var(--primary);font-size:13px;font-weight:600;box-shadow:var(--shadow)}
+
+/* 企业卡片（首页与名录页共用） */
+.company-card{display:flex;align-items:flex-start;gap:11px;width:100%;text-align:left;background:var(--card);border-radius:var(--radius-s);padding:13px 14px;box-shadow:var(--shadow)}
+.company-card:active{background:#f7faff}
+.company-logo{flex:none;width:40px;height:40px;border-radius:11px;background:var(--primary-l);color:var(--primary);display:grid;place-items:center;font-size:15px;font-weight:700}
+.company-card-main{flex:1;min-width:0}
+.company-card-name{font-size:14px;font-weight:600;color:var(--text);line-height:1.4;overflow-wrap:anywhere}
+.company-card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;font-size:11px;color:var(--text-3)}
+.company-card-meta span{white-space:nowrap}
+.company-card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.company-card-tags i{font-style:normal;font-size:10px;padding:2px 6px;border-radius:5px;background:var(--primary-l);color:var(--primary)}
+.company-card-arrow{flex:none;color:var(--text-3);font-size:16px;align-self:center}
+.company-state{font-size:11px;padding:2px 7px;border-radius:999px;background:#eef7f1;color:#179b75}
+.company-state.off{background:#f3f4f6;color:#8b95a5}
+
+/* 名录页 */
+.companies-page{padding:14px 14px 24px}
+.companies-title h2{font-size:19px;font-weight:700;color:var(--text)}
+.companies-title p{margin-top:6px;font-size:12px;color:var(--text-3);line-height:1.6}
+.company-toolbar{display:flex;gap:8px;margin:14px 0 10px}
+.company-search{flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:var(--radius-s);padding:0 12px;height:42px;box-shadow:var(--shadow)}
+.company-search svg{flex:none;color:var(--text-3)}
+.company-search input{flex:1;min-width:0;border:none;background:none;font-size:14px;height:100%}
+.company-export{flex:none;height:42px;padding:0 14px;border-radius:var(--radius-s);background:var(--card);color:var(--primary);font-size:13px;font-weight:600;box-shadow:var(--shadow);white-space:nowrap}
+.company-export:disabled{color:var(--text-3);opacity:.6}
+.company-chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch}
+.company-chips button{flex:none;font-size:12px;color:var(--text-2);background:var(--card);border-radius:999px;padding:7px 13px;box-shadow:var(--shadow);white-space:nowrap}
+.company-chips button.on{background:var(--primary);color:#fff}
+.company-count{font-size:12px;color:var(--text-3);margin-bottom:10px}
+
+/* 行业分布图：单系列横向条形图，只用主色一种颜色，数值直接标在右侧 */
+.industry-chart{background:var(--card);border-radius:var(--radius);padding:15px 14px;box-shadow:var(--shadow);margin-bottom:14px}
+.industry-chart h3{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px}
+.industry-chart p{font-size:11px;color:var(--text-3);margin-bottom:12px}
+.industry-row{display:grid;grid-template-columns:76px 1fr 34px;align-items:center;gap:9px;padding:4px 0}
+.industry-row dt{font-size:11px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.industry-track{display:block;height:10px;background:#eff3f9;border-radius:5px;overflow:hidden}
+.industry-fill{display:block;height:100%;background:var(--primary);border-radius:0 4px 4px 0;min-width:4px;transition:width .45s cubic-bezier(.22,.9,.3,1)}
+.industry-row dd{font-size:11px;color:var(--text-2);text-align:right;font-variant-numeric:tabular-nums}
+
+.company-list{display:flex;flex-direction:column;gap:8px}
+.company-loadmore{width:100%;margin-top:10px;padding:12px;border-radius:var(--radius-s);background:var(--card);color:var(--primary);font-size:13px;font-weight:600;box-shadow:var(--shadow)}
+.company-note{margin-top:14px;font-size:11px;color:var(--text-3);line-height:1.7}
+.company-empty{padding:40px 16px;text-align:center;color:var(--text-3);font-size:13px;line-height:1.9}
+.company-empty button{margin-top:10px;color:var(--primary);font-size:13px;font-weight:600}
+
+/* 企业详情 */
+.company-detail{padding:14px 14px 30px}
+.company-detail-head{display:flex;gap:12px;align-items:flex-start}
+.company-detail-head h2{font-size:18px;font-weight:700;color:var(--text);line-height:1.45;overflow-wrap:anywhere}
+.company-detail-sub{margin-top:7px;display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:var(--text-3)}
+.company-detail-sub span{background:var(--card);border-radius:999px;padding:3px 9px}
+.company-detail-sub .company-state{background:#eef7f1;color:#179b75}
+.company-detail-sub .company-state.off{background:#f3f4f6;color:#8b95a5}
+.company-facts{margin-top:14px;background:var(--card);border-radius:var(--radius);padding:4px 14px;box-shadow:var(--shadow)}
+.company-facts div{display:flex;gap:14px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px;line-height:1.6}
+.company-facts div:last-child{border-bottom:0}
+.company-facts dt{flex:none;width:76px;color:var(--text-3)}
+.company-facts dd{flex:1;min-width:0;color:var(--text);overflow-wrap:anywhere}
+.company-facts a{color:var(--primary)}
+.company-section{margin-top:12px;background:var(--card);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+.company-section h3{font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px}
+.company-section p{font-size:13px;color:var(--text-2);line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+.company-mask-note{margin-top:10px;font-size:11px;color:var(--text-3);line-height:1.7;background:#fff9e9;border-radius:var(--radius-s);padding:10px 12px;color:#8a6d2f}
+.company-cta{display:flex;gap:10px;margin-top:16px}
+.company-cta button{flex:1;height:46px;border-radius:var(--radius-s);font-size:14px;font-weight:600}
+.company-cta .pri{background:var(--primary);color:#fff}
+.company-cta .ghost{background:var(--card);color:var(--text-2);box-shadow:var(--shadow)}
+
+/* 首屏入口变成 4 个：窄屏排成 2×2，避免四个挤成一条 */
+@media (max-width:899px){
+  .hero-entries.is-four{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .hero-entries.is-four .hero-entry{min-height:0}
+}
+
+@media (min-width:900px){
+  /* 与房源列表同宽居中（房源用 max-width:content-width+56 / padding 28） */
+  .company-home{max-width:calc(var(--content-width) + 56px);margin:24px auto 8px;padding:0 28px}
+  .companies-page{max-width:calc(var(--content-width) + 56px);margin:0 auto;padding:20px 28px 40px}
+  .company-detail{max-width:780px;margin:0 auto;padding:20px 28px 40px}
+  .industry-row{grid-template-columns:110px 1fr 40px}
+  .company-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .company-home-list{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .industry-chart{max-width:720px;margin-left:auto;margin-right:auto}
+}

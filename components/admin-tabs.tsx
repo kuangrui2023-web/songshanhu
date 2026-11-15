@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Building2, MessageSquare, BarChart3, MapPin, Settings } from 'lucide-react';
+import { Building2, MessageSquare, BarChart3, MapPin, Settings, Briefcase } from 'lucide-react';
 
 const tabs = [
   { key: 'listings', label: '房源', icon: Building2 },
+  { key: 'companies', label: '企业', icon: Briefcase },
   { key: 'inquiries', label: '留言', icon: MessageSquare },
   { key: 'stats', label: '数据', icon: BarChart3 },
   { key: 'map', label: '地图标注', icon: MapPin },

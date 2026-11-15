@@ -122,6 +122,18 @@ function statusPill(s) {
     : '<span class="status-pill off">已下架</span>';
 }
 
+/* ---------------- 入驻企业（逻辑在 companies.js） ---------------- */
+function companyEntryNote() {
+  const box = window.SiteCompanies && window.SiteCompanies.state;
+  if (!box) return '名录整理中';
+  if (box.loading && !box.items.length) return '正在读取…';
+  if (box.error) return '暂未取得数据';
+  return box.items.length ? box.items.length + ' 家' : '名录整理中';
+}
+function companyHomeSection() {
+  return window.SiteCompanies ? window.SiteCompanies.homeSection() : '';
+}
+
 /* ---------------- 首页 ---------------- */
 function renderHome() {
   const online = onlineListings();
@@ -141,7 +153,7 @@ function renderHome() {
       <h2>找到适合企业的<br>下一处空间</h2>
       <p>写字楼、厂房与研发空间，按面积、租金和交付条件筛选。</p>
     </div>
-    <div class="hero-entries">
+    <div class="hero-entries is-four">
       <button type="button" class="hero-entry" data-act="entry:usage" data-v="写字楼">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a1 1 0 011-1h9a1 1 0 011 1v16"/><path d="M15 9h4a1 1 0 011 1v11"/><path d="M8 8h2M8 12h2M8 16h2M11.5 21v-3.5h2.5V21M2 21h20"/></svg>
         <b>写字楼</b><span> ${State.listingsLoading ? "正在读取…" : State.listingsError ? "暂未取得数据" : online.filter(l => (l.usage || '写字楼') === '写字楼').length + " 套在租"}</span>
@@ -153,6 +165,10 @@ function renderHome() {
       <button type="button" class="hero-entry" data-act="open:resources">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
         <b>产业资源</b><span> 企业 · 需求 · 服务</span>
+      </button>
+      <button type="button" class="hero-entry" data-act="open:companies">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 10h2M13 10h2M9 14h2M13 14h2M9 18h2M13 18h2"/></svg>
+        <b>入驻企业</b><span> ${companyEntryNote()}</span>
       </button>
     </div>
     <div class="hero-sub">园区直租·免佣看房·工商注册·高新申报·股权融资·法律咨询</div>
@@ -189,6 +205,7 @@ function renderHome() {
         <button class="result-reset" type="button" data-act="filters:reset">清除全部筛选</button>
       </div>`}
   </div>
+  ${companyHomeSection()}
   <footer class="site-footer">${State.listingsLoading ? "正在读取房源资料…" : State.listingsError ? "房源资料暂未取得" : "已展示 " + filtered.length + " 条结果"} · 房源资料由发布方维护<br>松山湖产业招商 · 登来</footer>`;
 }
 
@@ -1325,7 +1342,7 @@ async function aiAsk(preset) {
 
 /* ---------------- 视图切换 ---------------- */
 const TAB_META = { home: '松山湖产业招商网站', message: '我的留言', mine: '我的' };
-const VIEW_TITLE = { detail: '房源详情', admin: '管理后台', resources: '产业资源' };
+const VIEW_TITLE = { detail: '房源详情', admin: '管理后台', resources: '产业资源', companies: '入驻企业', company: '企业详情' };
 const TAB_VIEWS = ['home', 'message', 'mine'];
 const ICONS = {
   home: '<path d="M3 10l9-7 9 7v10a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><path d="M9 21V12h6v9"/>',
@@ -1415,7 +1432,9 @@ function updateSiteHeader() {
   const desktop = window.matchMedia('(min-width:900px)').matches;
   $('#navTitle').textContent = desktop ? (Api.db.settings.siteName || '松山湖产业招商') : (TAB_META[State.view] || VIEW_TITLE[State.view] || '松山湖产业招商');
   $$('.desktop-nav button').forEach(button => {
-    const active = button.dataset.v === State.view || (button.dataset.act === 'open:resources' && State.view === 'resources');
+    const active = button.dataset.v === State.view
+      || (button.dataset.act === 'open:resources' && State.view === 'resources')
+      || (button.dataset.act === 'open:companies' && (State.view === 'companies' || State.view === 'company'));
     button.classList.toggle('active', active);
     if (active) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current');
   });
@@ -1478,7 +1497,7 @@ function bindDetailMap() {
 }
 
 function render() {
-  const map = { home: renderHome, message: renderMessage, mine: renderMine, detail: renderDetail, admin: renderAdmin, resources: renderResources };
+  const map = { home: renderHome, message: renderMessage, mine: renderMine, detail: renderDetail, admin: renderAdmin, resources: renderResources, companies: window.renderCompanies, company: window.renderCompany };
   const fn = map[State.view];
   const el = $('#view-' + State.view);
   window.SiteMotion?.beforeRender(el);

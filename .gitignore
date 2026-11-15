@@ -12,3 +12,5 @@ public/experience/config.js
 /CLAUDE.md
 /supabase/.temp/
 /.tmp/
+# 抓取的企业原始数据含真实联系方式，仓库是公开的，不能提交
+/exports/

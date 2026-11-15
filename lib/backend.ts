@@ -83,7 +83,7 @@ function saveSession(value: Session | null) {
   if (value) window.localStorage.setItem(storageKey, JSON.stringify(value));
   else window.localStorage.removeItem(storageKey);
 }
-async function parseResponse(response: Response) {
+export async function parseResponse(response: Response) {
   const result = await response.json().catch(() => null);
   if (!response.ok) {
     const code = result?.error_code || result?.code;
@@ -157,7 +157,7 @@ export async function accessToken(): Promise<string> {
   try { return await sessionRefresh; } finally { sessionRefresh = null; }
 }
 
-function headers(token?: string) { return { apikey: backendKey, Authorization: `Bearer ${token || backendKey}` }; }
+export function headers(token?: string) { return { apikey: backendKey, Authorization: `Bearer ${token || backendKey}` }; }
 export async function loadPublished(): Promise<PublicListing[]> {
   if (!backendReady) return [];
   const response = await fetch(`${backendUrl}/rest/v1/public_listings?select=*&order=created_at.desc`, { headers: headers(), cache: "no-store" });

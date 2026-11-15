@@ -65,7 +65,9 @@
       name: String(row.name || '').trim(),
       park: row.park || '',
       building: row.building || '',
+      buildingId: row.building_id || '',
       room: row.room || '',
+      floor: row.floor || '',
       industry: row.industry || '',
       status: row.status || '',
       establishedOn: row.established_on || '',
@@ -99,7 +101,7 @@
     return '';
   }
   function whereText(item) {
-    return [item.park, item.building, item.room].filter(Boolean).join(' · ');
+    return [item.park, item.building, item.floor, item.room].filter(Boolean).join(' · ');
   }
   function dateText(value) {
     const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -117,7 +119,7 @@
     if (state.industry !== '全部' && item.industry !== state.industry) return false;
     const k = state.kw.trim().toLowerCase();
     if (!k) return true;
-    return [item.name, item.industry, item.address, item.building, item.park, item.legal, (item.tags || []).join(' ')]
+    return [item.name, item.industry, item.address, item.building, item.floor, item.room, item.park, item.legal, (item.tags || []).join(' ')]
       .some(value => String(value || '').toLowerCase().includes(k));
   }
   const visible = () => state.items.filter(matches);
@@ -332,11 +334,11 @@
   }
 
   /* ---------------- 导出（只导出打码后的前台字段） ---------------- */
-  const EXPORT_COLUMNS = ['企业名称', '所属园区', '楼栋', '房号', '所属行业', '经营状态', '成立日期', '注册资本(万元)', '人员规模', '法定代表人', '联系电话', '邮箱', '统一社会信用代码', '注册地址', '官网', '标签'];
+  const EXPORT_COLUMNS = ['企业名称', '所属园区', '楼栋', '楼层', '房号', '所属行业', '经营状态', '成立日期', '注册资本(万元)', '人员规模', '法定代表人', '联系电话', '邮箱', '统一社会信用代码', '注册地址', '官网', '标签'];
 
   function exportRows() {
     return visible().map(item => [
-      item.name, item.park, item.building, item.room, item.industry, item.status,
+      item.name, item.park, item.building, item.floor, item.room, item.industry, item.status,
       item.establishedOn, item.capital == null ? '' : String(item.capital), item.size,
       item.legal, item.phone, item.email, item.code, item.address, item.website, item.tags.join('、'),
     ]);

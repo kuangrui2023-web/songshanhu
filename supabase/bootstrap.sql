@@ -1627,3 +1627,663 @@ grant execute on function public.list_my_inquiries() to authenticated;
 
 notify pgrst,'reload schema';
 commit;
+
+-- ==================== companies.sql ====================
+-- 入驻企业名录：企业表 + 分区权限 + 公开打码视图
+-- 用法：在 Supabase 控制台 SQL Editor 整段粘贴执行；可重复执行。
+-- 依赖：bootstrap.sql 里的 public.can_manage_park(text)。
+begin;
+set local lock_timeout = '5s';
+
+-- ==================== 1. 企业表（真实值，仅管理员可读写） ====================
+create table if not exists public.companies (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (length(btrim(name)) between 2 and 200),
+  park text check (park is null or length(btrim(park)) between 1 and 120),
+  building text check (building is null or length(building) <= 60),
+  room text check (room is null or length(room) <= 60),
+  industry text check (industry is null or length(industry) <= 120),
+  status text check (status is null or length(status) <= 40),
+  established_on date,
+  registered_capital numeric(16,2) check (registered_capital is null or registered_capital >= 0),
+  employee_band text check (employee_band is null or length(employee_band) <= 40),
+  -- 以下为敏感字段：只在原表存在，公开视图里一律打码
+  legal_representative text check (legal_representative is null or length(legal_representative) <= 60),
+  social_insurance_count integer check (social_insurance_count is null or social_insurance_count >= 0),
+  unified_code text check (unified_code is null or length(unified_code) <= 32),
+  phone text check (phone is null or length(phone) <= 40),
+  email text check (email is null or length(email) <= 120),
+  -- 以下为公开字段
+  address text check (address is null or length(address) <= 300),
+  business_scope text check (business_scope is null or length(business_scope) <= 4000),
+  website text check (website is null or length(website) <= 200),
+  tags text[] not null default '{}',
+  source text check (source is null or length(source) <= 200),
+  published boolean not null default true,
+  created_by uuid default auth.uid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+comment on table public.companies is '入驻企业名录（含敏感字段，前台只能读 public_companies 视图）';
+
+-- 同园区内企业名称唯一（大小写、首尾空格不敏感）
+create unique index if not exists companies_park_name_key
+  on public.companies (coalesce(park, ''), lower(btrim(name)));
+create index if not exists companies_park_idx on public.companies (park) where published;
+create index if not exists companies_industry_idx on public.companies (industry) where published;
+
+-- ==================== 2. 权限：沿用房源表的分区管理员写法 ====================
+alter table public.companies enable row level security;
+revoke all on table public.companies from anon, authenticated;
+grant select, insert, update, delete on table public.companies to authenticated;
+
+drop policy if exists "admins read own park companies" on public.companies;
+create policy "admins read own park companies" on public.companies
+  for select to authenticated using (public.can_manage_park(park));
+
+drop policy if exists "admins insert own park companies" on public.companies;
+create policy "admins insert own park companies" on public.companies
+  for insert to authenticated with check (public.can_manage_park(park));
+
+drop policy if exists "admins update own park companies" on public.companies;
+create policy "admins update own park companies" on public.companies
+  for update to authenticated
+  using (public.can_manage_park(park)) with check (public.can_manage_park(park));
+
+drop policy if exists "admins delete own park companies" on public.companies;
+create policy "admins delete own park companies" on public.companies
+  for delete to authenticated using (public.can_manage_park(park));
+
+-- updated_at 自动刷新
+create or replace function private.touch_company_updated_at()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  new.updated_at := now();
+  return new;
+end $$;
+revoke all on function private.touch_company_updated_at() from public, anon, authenticated;
+
+drop trigger if exists touch_company_updated_at on public.companies;
+create trigger touch_company_updated_at before update on public.companies
+  for each row execute function private.touch_company_updated_at();
+
+-- ==================== 3. 公开视图：在这里打码，而不是在前端 ====================
+-- 视图由所有者（postgres）执行，绕过 RLS，因此必须在 where 里自己过滤 published。
+create or replace view public.public_companies with (security_barrier = true) as
+select
+  c.id,
+  c.name,
+  c.park,
+  c.building,
+  c.room,
+  c.industry,
+  c.status,
+  c.established_on,
+  extract(year from c.established_on)::int as established_year,
+  c.registered_capital,
+  -- 人数只对外给区间：优先用人工填写的区间，否则按参保人数换算
+  coalesce(
+    nullif(btrim(c.employee_band), ''),
+    case
+      when c.social_insurance_count is null then null
+      when c.social_insurance_count < 10 then '10人以内'
+      when c.social_insurance_count < 50 then '10-50人'
+      when c.social_insurance_count < 100 then '50-100人'
+      when c.social_insurance_count < 500 then '100-500人'
+      else '500人以上'
+    end
+  ) as employee_band,
+  -- 法定代表人：保留姓，其余固定打两颗星（不泄露名字长度）
+  case
+    when c.legal_representative is null or btrim(c.legal_representative) = '' then null
+    else left(btrim(c.legal_representative), 1) || '**'
+  end as legal_representative,
+  -- 联系电话：138****5678
+  case
+    when c.phone is null then null
+    when length(regexp_replace(c.phone, '\D', '', 'g')) >= 7
+      then left(regexp_replace(c.phone, '\D', '', 'g'), 3) || '****'
+           || right(regexp_replace(c.phone, '\D', '', 'g'), 4)
+    else '***'
+  end as phone,
+  -- 邮箱：a***@qq.com
+  case
+    when c.email is null or position('@' in c.email) < 2 then null
+    else left(split_part(c.email, '@', 1), 1) || '***@' || split_part(c.email, '@', 2)
+  end as email,
+  -- 统一社会信用代码：前 8 位 + 星号
+  case
+    when c.unified_code is null or length(btrim(c.unified_code)) <= 8 then null
+    else left(btrim(c.unified_code), 8) || '****'
+  end as unified_code,
+  c.address,
+  c.business_scope,
+  c.website,
+  c.tags,
+  c.updated_at
+from public.companies c
+where c.published;
+
+revoke all on table public.public_companies from public, anon, authenticated;
+grant select on table public.public_companies to anon, authenticated;
+
+commit;
+
+-- ==================== buildings.sql ====================
+-- 楼栋楼层导览：楼栋表 + 空置单元表 + 企业楼层字段 + 公开视图
+-- 用法：在 Supabase 控制台 SQL Editor 整段粘贴执行；可重复执行。
+-- 依赖：bootstrap.sql 里的 public.is_site_admin()。
+begin;
+set local lock_timeout = '5s';
+
+-- ==================== 1. 楼栋表（真实值，仅管理员可写） ====================
+create table if not exists public.buildings (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (length(btrim(name)) between 2 and 120),
+  region text check (region is null or length(btrim(region)) <= 120),
+  address text check (address is null or length(address) <= 300),
+  floors_count integer check (floors_count is null or floors_count between 1 and 200),
+  cover_url text check (cover_url is null or length(cover_url) <= 1000),
+  description text check (description is null or length(description) <= 4000),
+  highlights text[] not null default '{}',
+  sort_order integer not null default 0,
+  published boolean not null default false,
+  created_by uuid default auth.uid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+comment on table public.buildings is '楼栋导览（前台经 public_buildings 视图读取，只展示 published=true 的楼栋）';
+
+create unique index if not exists buildings_name_key
+  on public.buildings (lower(btrim(name)));
+create index if not exists buildings_published_idx on public.buildings (sort_order, name) where published;
+
+-- ==================== 2. 空置单元表 ====================
+create table if not exists public.building_units (
+  id uuid primary key default gen_random_uuid(),
+  building_id uuid not null references public.buildings(id) on delete cascade,
+  floor text not null check (length(btrim(floor)) between 1 and 30),
+  floor_no integer,
+  room text check (room is null or length(btrim(room)) <= 60),
+  area numeric(10,2) check (area is null or area >= 0),
+  rent numeric(10,2) check (rent is null or rent >= 0),
+  fee numeric(10,2) check (fee is null or fee >= 0),
+  orientation text check (orientation is null or length(btrim(orientation)) <= 30),
+  decoration text check (decoration is null or length(btrim(decoration)) <= 60),
+  status text not null default 'vacant' check (status in ('vacant', 'reserved', 'occupied')),
+  note text check (note is null or length(note) <= 1000),
+  sort_order integer not null default 0,
+  published boolean not null default true,
+  created_by uuid default auth.uid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+comment on table public.building_units is '楼栋内的单元/空置房源清单；occupied 单元前台不展示，已入驻企业请写在 companies 表';
+
+create index if not exists building_units_building_idx
+  on public.building_units (building_id, floor_no desc, sort_order, room);
+create index if not exists building_units_public_idx
+  on public.building_units (building_id, floor_no desc) where published and status in ('vacant', 'reserved');
+
+-- ==================== 3. 企业表增加楼层 ====================
+alter table public.companies
+  add column if not exists floor text check (floor is null or length(btrim(floor)) <= 30);
+comment on column public.companies.floor is '所在楼层，例如 12F、12楼、B1；前台楼层导览按此字段归层';
+
+-- ==================== 4. 权限：沿用企业的管理员写法 ====================
+alter table public.buildings enable row level security;
+revoke all on table public.buildings from anon, authenticated;
+grant select, insert, update, delete on table public.buildings to authenticated;
+
+drop policy if exists "admins read buildings" on public.buildings;
+create policy "admins read buildings" on public.buildings
+  for select to authenticated using (public.is_site_admin());
+
+drop policy if exists "admins insert buildings" on public.buildings;
+create policy "admins insert buildings" on public.buildings
+  for insert to authenticated with check (public.is_site_admin());
+
+drop policy if exists "admins update buildings" on public.buildings;
+create policy "admins update buildings" on public.buildings
+  for update to authenticated using (public.is_site_admin()) with check (public.is_site_admin());
+
+drop policy if exists "admins delete buildings" on public.buildings;
+create policy "admins delete buildings" on public.buildings
+  for delete to authenticated using (public.is_site_admin());
+
+alter table public.building_units enable row level security;
+revoke all on table public.building_units from anon, authenticated;
+grant select, insert, update, delete on table public.building_units to authenticated;
+
+drop policy if exists "admins read building units" on public.building_units;
+create policy "admins read building units" on public.building_units
+  for select to authenticated using (public.is_site_admin());
+
+drop policy if exists "admins insert building units" on public.building_units;
+create policy "admins insert building units" on public.building_units
+  for insert to authenticated with check (public.is_site_admin());
+
+drop policy if exists "admins update building units" on public.building_units;
+create policy "admins update building units" on public.building_units
+  for update to authenticated using (public.is_site_admin()) with check (public.is_site_admin());
+
+drop policy if exists "admins delete building units" on public.building_units;
+create policy "admins delete building units" on public.building_units
+  for delete to authenticated using (public.is_site_admin());
+
+-- updated_at 自动刷新（复用一个触发器函数）
+create or replace function private.touch_building_updated_at()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  new.updated_at := now();
+  return new;
+end $$;
+revoke all on function private.touch_building_updated_at() from public, anon, authenticated;
+
+drop trigger if exists touch_building_updated_at on public.buildings;
+create trigger touch_building_updated_at before update on public.buildings
+  for each row execute function private.touch_building_updated_at();
+
+drop trigger if exists touch_building_unit_updated_at on public.building_units;
+create trigger touch_building_unit_updated_at before update on public.building_units
+  for each row execute function private.touch_building_updated_at();
+
+-- ==================== 5. 公开视图 ====================
+-- 视图由所有者（postgres）执行，绕过 RLS，因此必须在 where 里自己过滤 published。
+create or replace view public.public_buildings with (security_barrier = true) as
+select
+  b.id,
+  b.name,
+  b.region,
+  b.address,
+  b.floors_count,
+  b.cover_url,
+  b.description,
+  b.highlights,
+  b.sort_order,
+  b.updated_at
+from public.buildings b
+where b.published;
+
+revoke all on table public.public_buildings from public, anon, authenticated;
+grant select on table public.public_buildings to anon, authenticated;
+
+create or replace view public.public_building_units with (security_barrier = true) as
+select
+  u.id,
+  u.building_id,
+  u.floor,
+  u.floor_no,
+  u.room,
+  u.area,
+  u.rent,
+  u.fee,
+  u.orientation,
+  u.decoration,
+  u.status,
+  u.note,
+  u.sort_order,
+  u.updated_at
+from public.building_units u
+join public.buildings b on b.id = u.building_id
+where b.published and u.published and u.status in ('vacant', 'reserved');
+
+revoke all on table public.public_building_units from public, anon, authenticated;
+grant select on table public.public_building_units to anon, authenticated;
+
+-- 企业公开视图补上楼层。CREATE OR REPLACE VIEW 只允许在末尾追加列，所以 floor 放在最后。
+create or replace view public.public_companies with (security_barrier = true) as
+select
+  c.id,
+  c.name,
+  c.park,
+  c.building,
+  c.room,
+  c.industry,
+  c.status,
+  c.established_on,
+  extract(year from c.established_on)::int as established_year,
+  c.registered_capital,
+  coalesce(
+    nullif(btrim(c.employee_band), ''),
+    case
+      when c.social_insurance_count is null then null
+      when c.social_insurance_count < 10 then '10人以内'
+      when c.social_insurance_count < 50 then '10-50人'
+      when c.social_insurance_count < 100 then '50-100人'
+      when c.social_insurance_count < 500 then '100-500人'
+      else '500人以上'
+    end
+  ) as employee_band,
+  case
+    when c.legal_representative is null or btrim(c.legal_representative) = '' then null
+    else left(btrim(c.legal_representative), 1) || '**'
+  end as legal_representative,
+  case
+    when c.phone is null then null
+    when length(regexp_replace(c.phone, '\D', '', 'g')) >= 7
+      then left(regexp_replace(c.phone, '\D', '', 'g'), 3) || '****'
+           || right(regexp_replace(c.phone, '\D', '', 'g'), 4)
+    else '***'
+  end as phone,
+  case
+    when c.email is null or position('@' in c.email) < 2 then null
+    else left(split_part(c.email, '@', 1), 1) || '***@' || split_part(c.email, '@', 2)
+  end as email,
+  case
+    when c.unified_code is null or length(btrim(c.unified_code)) <= 8 then null
+    else left(btrim(c.unified_code), 8) || '****'
+  end as unified_code,
+  c.address,
+  c.business_scope,
+  c.website,
+  c.tags,
+  c.updated_at,
+  c.floor
+from public.companies c
+where c.published;
+
+revoke all on table public.public_companies from public, anon, authenticated;
+grant select on table public.public_companies to anon, authenticated;
+
+commit;
+
+-- ==================== building_admins.sql ====================
+-- 楼栋管理员：给每栋楼指定负责人，并把后台权限限制在自己负责的楼栋
+-- 用法：Supabase 控制台 → SQL Editor → 整段粘贴执行；可重复执行。
+-- 依赖：buildings.sql、admin_all_parks.sql 已经执行过。
+begin;
+set local lock_timeout = '5s';
+
+-- ==================== 1. 新增角色与关联字段 ====================
+-- 楼栋管理员：没有园区范围，只管理 buildings.manager_id 指向自己的楼栋。
+alter table public.admin_users drop constraint if exists admin_users_role_check;
+alter table public.admin_users drop constraint if exists admin_users_check;
+alter table public.admin_users add constraint admin_users_role_check
+  check (role in ('superadmin', 'content_admin', 'park_admin', 'building_admin'));
+alter table public.admin_users add constraint admin_users_check
+  check (
+    (role in ('superadmin', 'content_admin', 'building_admin') and park is null)
+    or (role = 'park_admin' and park is not null)
+  );
+
+-- 每栋楼一位负责人。同一个人可以负责多栋楼，但一栋楼只认一个负责人。
+alter table public.buildings
+  add column if not exists manager_id uuid references auth.users(id) on delete set null;
+comment on column public.buildings.manager_id is
+  '楼栋负责人（building_admin）；只有超级管理员能调整，负责人只能维护这栋楼的数据';
+create index if not exists buildings_manager_idx on public.buildings (manager_id);
+
+-- 企业用稳定的 building_id 关联楼栋，避免只靠名称匹配时改名或空格差异导致漏匹配。
+alter table public.companies
+  add column if not exists building_id uuid references public.buildings(id) on delete set null;
+comment on column public.companies.building_id is
+  '企业所在楼栋（稳定关联）；为空时前台回退到按楼栋名称匹配';
+create index if not exists companies_building_idx on public.companies (building_id);
+
+-- 已有企业：楼栋名称和楼栋表完全一致时自动补上关联。
+update public.companies c
+set building_id = b.id
+from public.buildings b
+where c.building_id is null
+  and c.building is not null
+  and lower(btrim(c.building)) = lower(btrim(b.name));
+
+-- ==================== 2. 权限判断函数 ====================
+-- 超级管理员、全园区管理员：全部楼栋
+-- 楼栋管理员：只有 manager_id = 自己的楼栋
+-- 园区管理员：所属片区（region）与本园区一致的楼栋
+create or replace function public.can_manage_building(target_building uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists(
+    select 1 from public.admin_users a
+    where a.user_id = auth.uid()
+      and a.active
+      and (
+        a.role in ('superadmin', 'content_admin')
+        or (a.role = 'building_admin' and exists(
+          select 1 from public.buildings b
+          where b.id = target_building and b.manager_id = a.user_id
+        ))
+        or (a.role = 'park_admin' and exists(
+          select 1 from public.buildings b
+          where b.id = target_building and b.region = a.park
+        ))
+      )
+  );
+$$;
+revoke all on function public.can_manage_building(uuid) from public;
+grant execute on function public.can_manage_building(uuid) to authenticated;
+
+-- 企业权限：园区管理员按园区；楼栋管理员按企业所属楼栋。
+create or replace function public.can_manage_company(target_park text, target_building uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.can_manage_park(target_park)
+    or (target_building is not null and public.can_manage_building(target_building));
+$$;
+revoke all on function public.can_manage_company(text, uuid) from public;
+grant execute on function public.can_manage_company(text, uuid) to authenticated;
+
+-- 只有超级管理员能改楼栋负责人，防止楼栋管理员把权限转给别人。
+create or replace function private.protect_building_manager()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if new.manager_id is distinct from old.manager_id and not public.is_superadmin() then
+    raise exception '只有超级管理员可以调整楼栋负责人';
+  end if;
+  return new;
+end $$;
+revoke all on function private.protect_building_manager() from public, anon, authenticated;
+
+drop trigger if exists protect_building_manager on public.buildings;
+create trigger protect_building_manager before update on public.buildings
+  for each row execute function private.protect_building_manager();
+
+-- ==================== 3. 楼栋与单元权限 ====================
+drop policy if exists "admins read buildings" on public.buildings;
+drop policy if exists "admins insert buildings" on public.buildings;
+drop policy if exists "admins update buildings" on public.buildings;
+drop policy if exists "admins delete buildings" on public.buildings;
+drop policy if exists "admins read scoped buildings" on public.buildings;
+drop policy if exists "admins insert scoped buildings" on public.buildings;
+drop policy if exists "admins update scoped buildings" on public.buildings;
+drop policy if exists "admins delete scoped buildings" on public.buildings;
+
+create policy "admins read scoped buildings" on public.buildings
+  for select to authenticated using (public.can_manage_building(id));
+
+-- 新增楼栋仍然只给超级管理员和全园区管理员，楼栋管理员不能自己造楼。
+create policy "admins insert scoped buildings" on public.buildings
+  for insert to authenticated with check (public.can_manage_all_parks());
+
+create policy "admins update scoped buildings" on public.buildings
+  for update to authenticated
+  using (public.can_manage_building(id)) with check (public.can_manage_building(id));
+
+-- 删除整栋楼会连带删掉空置单元，只允许超级管理员和全园区管理员操作。
+create policy "admins delete scoped buildings" on public.buildings
+  for delete to authenticated using (public.can_manage_all_parks());
+
+drop policy if exists "admins read building units" on public.building_units;
+drop policy if exists "admins insert building units" on public.building_units;
+drop policy if exists "admins update building units" on public.building_units;
+drop policy if exists "admins delete building units" on public.building_units;
+drop policy if exists "admins read scoped building units" on public.building_units;
+drop policy if exists "admins insert scoped building units" on public.building_units;
+drop policy if exists "admins update scoped building units" on public.building_units;
+drop policy if exists "admins delete scoped building units" on public.building_units;
+
+create policy "admins read scoped building units" on public.building_units
+  for select to authenticated using (public.can_manage_building(building_id));
+create policy "admins insert scoped building units" on public.building_units
+  for insert to authenticated with check (public.can_manage_building(building_id));
+create policy "admins update scoped building units" on public.building_units
+  for update to authenticated
+  using (public.can_manage_building(building_id)) with check (public.can_manage_building(building_id));
+create policy "admins delete scoped building units" on public.building_units
+  for delete to authenticated using (public.can_manage_building(building_id));
+
+-- ==================== 4. 企业权限 ====================
+drop policy if exists "admins read own park companies" on public.companies;
+drop policy if exists "admins insert own park companies" on public.companies;
+drop policy if exists "admins update own park companies" on public.companies;
+drop policy if exists "admins delete own park companies" on public.companies;
+drop policy if exists "admins read scoped companies" on public.companies;
+drop policy if exists "admins insert scoped companies" on public.companies;
+drop policy if exists "admins update scoped companies" on public.companies;
+drop policy if exists "admins delete scoped companies" on public.companies;
+
+create policy "admins read scoped companies" on public.companies
+  for select to authenticated using (public.can_manage_company(park, building_id));
+create policy "admins insert scoped companies" on public.companies
+  for insert to authenticated with check (public.can_manage_company(park, building_id));
+create policy "admins update scoped companies" on public.companies
+  for update to authenticated
+  using (public.can_manage_company(park, building_id))
+  with check (public.can_manage_company(park, building_id));
+create policy "admins delete scoped companies" on public.companies
+  for delete to authenticated using (public.can_manage_company(park, building_id));
+
+-- ==================== 5. 账号管理支持楼栋管理员 ====================
+-- 新增 p_role 参数；旧的 6 参数签名先删除，避免 PostgREST 出现重载歧义。
+drop function if exists public.manage_site_admin(text, text, uuid, text, text, boolean);
+
+create or replace function public.manage_site_admin(
+  p_action text,
+  p_email text default null,
+  p_user uuid default null,
+  p_name text default '',
+  p_park text default null,
+  p_active boolean default true,
+  p_role text default null
+)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare
+  target uuid;
+  a admin_users;
+  lim integer;
+  all_parks boolean := coalesce(p_park = '__all_parks__', false);
+  building_scope boolean := coalesce(p_park = '__buildings__', false) or coalesce(p_role = 'building_admin', false);
+  wanted_role text;
+begin
+  if not public.is_superadmin() then raise exception '仅超级管理员可管理账号'; end if;
+  perform pg_advisory_xact_lock(20261019, 2);
+
+  wanted_role := case
+    when all_parks or p_role = 'content_admin' then 'content_admin'
+    when building_scope then 'building_admin'
+    else 'park_admin'
+  end;
+  target := p_user;
+
+  if p_action = 'add' then
+    select id into target from auth.users where lower(email) = lower(trim(p_email));
+    if target is null then raise exception '该邮箱尚未创建登录账号，请先使用新增账号功能'; end if;
+    if exists(select 1 from admin_users where user_id = target) then raise exception '该账号已在管理员列表中'; end if;
+    select admin_limit into lim from site_settings where id;
+    if (select count(*) from admin_users) >= lim then raise exception '管理员数量已达上限'; end if;
+    if wanted_role = 'park_admin' and not exists(select 1 from parks where name = p_park and active) then
+      raise exception '请选择一个启用的园区';
+    end if;
+    insert into admin_users(user_id, role, park, active, display_name)
+    values (
+      target,
+      wanted_role,
+      case when wanted_role = 'park_admin' then p_park else null end,
+      true,
+      left(trim(p_name), 60)
+    );
+  elsif p_action in ('update', 'remove') then
+    select * into a from admin_users where user_id = target for update;
+    if not found then raise exception '管理员不存在'; end if;
+    if a.role = 'superadmin' then
+      if p_action = 'remove' or not p_active then raise exception '不能移除或停用超级管理员'; end if;
+      update admin_users set display_name = left(trim(p_name), 60) where user_id = target;
+    elsif p_action = 'remove' then
+      delete from admin_users where user_id = target;
+      update public.buildings set manager_id = null where manager_id = target;
+    else
+      if wanted_role = 'park_admin' and not exists(select 1 from parks where name = p_park and active) then
+        raise exception '请选择一个启用的园区';
+      end if;
+      update admin_users
+      set display_name = left(trim(p_name), 60),
+          role = wanted_role,
+          park = case when wanted_role = 'park_admin' then p_park else null end,
+          active = p_active
+      where user_id = target;
+      -- 不再担任楼栋管理员时，清掉负责关系，避免留下无人认领的楼栋。
+      if wanted_role <> 'building_admin' then
+        update public.buildings set manager_id = null where manager_id = target;
+      end if;
+    end if;
+  else
+    raise exception '不支持的账号操作';
+  end if;
+
+  return target;
+end $$;
+revoke all on function public.manage_site_admin(text, text, uuid, text, text, boolean, text) from public;
+grant execute on function public.manage_site_admin(text, text, uuid, text, text, boolean, text) to authenticated;
+
+-- ==================== 6. 公开视图补充楼栋关联 ====================
+-- CREATE OR REPLACE VIEW 只允许在末尾追加列，所以 building_id 放在 floor 后面。
+create or replace view public.public_companies with (security_barrier = true) as
+select
+  c.id,
+  c.name,
+  c.park,
+  c.building,
+  c.room,
+  c.industry,
+  c.status,
+  c.established_on,
+  extract(year from c.established_on)::int as established_year,
+  c.registered_capital,
+  coalesce(
+    nullif(btrim(c.employee_band), ''),
+    case
+      when c.social_insurance_count is null then null
+      when c.social_insurance_count < 10 then '10人以内'
+      when c.social_insurance_count < 50 then '10-50人'
+      when c.social_insurance_count < 100 then '50-100人'
+      when c.social_insurance_count < 500 then '100-500人'
+      else '500人以上'
+    end
+  ) as employee_band,
+  case
+    when c.legal_representative is null or btrim(c.legal_representative) = '' then null
+    else left(btrim(c.legal_representative), 1) || '**'
+  end as legal_representative,
+  case
+    when c.phone is null then null
+    when length(regexp_replace(c.phone, '\D', '', 'g')) >= 7
+      then left(regexp_replace(c.phone, '\D', '', 'g'), 3) || '****'
+           || right(regexp_replace(c.phone, '\D', '', 'g'), 4)
+    else '***'
+  end as phone,
+  case
+    when c.email is null or position('@' in c.email) < 2 then null
+    else left(split_part(c.email, '@', 1), 1) || '***@' || split_part(c.email, '@', 2)
+  end as email,
+  case
+    when c.unified_code is null or length(btrim(c.unified_code)) <= 8 then null
+    else left(btrim(c.unified_code), 8) || '****'
+  end as unified_code,
+  c.address,
+  c.business_scope,
+  c.website,
+  c.tags,
+  c.updated_at,
+  c.floor,
+  c.building_id
+from public.companies c
+where c.published;
+
+revoke all on table public.public_companies from public, anon, authenticated;
+grant select on table public.public_companies to anon, authenticated;
+
+commit;

@@ -9,11 +9,14 @@ import {
 } from '@/lib/companies';
 import { companyCsvRows, IMPORT_COLUMNS, parseCompanySheet, type ParsedSheet, type RowIssue } from '@/lib/company-import';
 import { readTableFile } from '@/lib/sheet-read';
+import { loadBuildings, type Building } from '@/lib/buildings';
 
 type Props = {
   parks: Park[];
   assignedPark: string | null;
   parkOnly: boolean;
+  /** 楼栋管理员：只能维护自己负责的楼栋及其企业。 */
+  buildingOnly?: boolean;
   onBusy: (busy: boolean) => void;
 };
 
@@ -36,8 +39,10 @@ const LOOKUP_FIELDS: { key: keyof CompanyLookupFields; label: string }[] = [
 
 const nameKey = (value: string) => String(value || '').replace(/[\s（）()·]/g, '').toLowerCase();
 
-export function CompanyWorkspace({ parks, assignedPark, parkOnly, onBusy }: Props) {
+export function CompanyWorkspace({ parks, assignedPark, parkOnly, buildingOnly = false, onBusy }: Props) {
   const [list, setList] = useState<Company[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [buildingFilter, setBuildingFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
   const [parkFilter, setParkFilter] = useState(assignedPark || '');
@@ -52,7 +57,9 @@ export function CompanyWorkspace({ parks, assignedPark, parkOnly, onBusy }: Prop
   const [lookupResult, setLookupResult] = useState<CompanyLookupResult | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const parkNames = (parkOnly ? [assignedPark].filter(Boolean) : parks.filter(p => p.active).map(p => p.name)) as string[];
+  const parkNames = (buildingOnly
+    ? [...new Set(buildings.map(b => b.region).filter((name): name is string => Boolean(name)))]
+    : parkOnly ? [assignedPark].filter(Boolean) : parks.filter(p => p.active).map(p => p.name)) as string[];
 
   async function refresh() {
     setLoading(true);
@@ -61,11 +68,19 @@ export function CompanyWorkspace({ parks, assignedPark, parkOnly, onBusy }: Prop
     finally { setLoading(false); }
   }
   useEffect(() => { void refresh(); }, []);
+  useEffect(() => {
+    // RLS 只返回当前管理员有权维护的楼栋：楼栋管理员拿到自己负责的楼栋，园区管理员拿到本园区。
+    void loadBuildings().then(setBuildings).catch(() => setBuildings([]));
+  }, []);
 
   function lock(value: boolean) { setBusy(value); onBusy(value); }
 
   const filtered = list.filter(item => {
     if (parkFilter && item.park !== parkFilter) return false;
+    if (buildingFilter) {
+      const target = buildings.find(b => b.id === buildingFilter);
+      if (item.building_id !== buildingFilter && (!target || item.building !== target.name)) return false;
+    }
     if (!keyword.trim()) return true;
     const k = keyword.trim().toLowerCase();
     return [item.name, item.industry, item.legal_representative, item.address, item.unified_code]
@@ -75,7 +90,16 @@ export function CompanyWorkspace({ parks, assignedPark, parkOnly, onBusy }: Prop
   const existing = new Map(list.map(item => [companyKey(item.name, item.park), item]));
 
   function startNew() {
-    setEditing(blankCompany(parkOnly ? assignedPark : (parkFilter || null)));
+    const base = blankCompany(parkOnly ? assignedPark : (parkFilter || null));
+    if (buildingOnly) {
+      const target = buildings.find(b => b.id === buildingFilter) || buildings[0];
+      if (target) {
+        base.building_id = target.id;
+        base.building = target.name;
+        base.park = target.region || base.park;
+      }
+    }
+    setEditing(base);
     setMessage(''); setError(''); setLookupResult(null);
   }
 
@@ -120,11 +144,23 @@ export function CompanyWorkspace({ parks, assignedPark, parkOnly, onBusy }: Prop
     if (mode === 'overwrite') setLookupResult(null);
   }
 
+  /** 选择楼栋时同步楼栋名称和片区，前台按 building_id 归楼。 */
+  function chooseBuilding(id: string) {
+    const target = buildings.find(b => b.id === id);
+    setEditing(cur => cur ? {
+      ...cur,
+      building_id: target?.id || null,
+      building: target?.name || cur.building,
+      park: target?.region || cur.park,
+    } : cur);
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!editing || busy) return;
     if (!editing.name.trim()) { setError('企业名称不能为空。'); return; }
     if (parkOnly && editing.park !== assignedPark) { setError('只能维护本园区企业。'); return; }
+    if (buildingOnly && !buildings.some(b => b.id === editing.building_id)) { setError('请选择你负责的楼栋。'); return; }
     lock(true); setError(''); setMessage('');
     try {
       await saveCompany(editing);
@@ -271,9 +307,13 @@ export function CompanyWorkspace({ parks, assignedPark, parkOnly, onBusy }: Prop
           </div>
           <small>数据来自快查（查询时间 {new Date(lookupResult.lookup_at).toLocaleString('zh-CN')}）。电话、邮箱、官网不在该接口返回范围内，仍需手工填写。</small>
         </div>}
-        <label>所属园区<select value={editing.park || ''} disabled={parkOnly} onChange={e => set('park', e.target.value || null)}><option value="">未归入园</option>{parkNames.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
-        <label>楼栋<input value={text('building')} onChange={e => set('building', e.target.value)} maxLength={60}/></label>
+        <label>所属园区<select value={editing.park || ''} disabled={parkOnly || buildingOnly} onChange={e => set('park', e.target.value || null)}><option value="">未归入园</option>{editing.park && !parkNames.includes(editing.park) && <option value={editing.park}>{editing.park}</option>}{parkNames.map(name => <option key={name} value={name}>{name}</option>)}</select>{buildingOnly && <small>由所选楼栋的片区自动确定。</small>}</label>
+        {buildingOnly ? <label>所属楼栋<span aria-hidden="true">*</span><select required value={editing.building_id || ''} onChange={e => chooseBuilding(e.target.value)}><option value="" disabled>请选择你负责的楼栋</option>{buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select><small>企业会出现在这栋楼的楼层导览里。</small></label> : <>
+          <label>关联楼栋<select value={editing.building_id || ''} onChange={e => chooseBuilding(e.target.value)}><option value="">不关联（按楼栋名称匹配）</option>{buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select><small>选择后，前台按楼栋 ID 归楼，改名也不影响。</small></label>
+          <label>楼栋名称<input value={text('building')} onChange={e => set('building', e.target.value)} maxLength={60}/></label>
+        </>}
         <label>房号<input value={text('room')} onChange={e => set('room', e.target.value)} maxLength={60}/></label>
+        <label>楼层<input value={text('floor')} onChange={e => set('floor', e.target.value)} maxLength={30} placeholder="例如 12F、12楼、B1"/><small>楼栋导览按楼层归位；同一栋楼请统一写法。</small></label>
         <label>所属行业<input value={text('industry')} onChange={e => set('industry', e.target.value)} maxLength={120}/></label>
         <label>经营状态<input value={text('status')} onChange={e => set('status', e.target.value)} maxLength={40} placeholder="存续 / 在业 / 注销"/></label>
         <label>成立日期<input type="date" value={text('established_on')} onChange={e => set('established_on', e.target.value || null)}/></label>
@@ -300,9 +340,10 @@ export function CompanyWorkspace({ parks, assignedPark, parkOnly, onBusy }: Prop
   return <div className="workspace-stack">
     <div className="workspace-toolbar">
       <label className="workspace-search"><Search size={18}/><input aria-label="搜索企业" placeholder="搜索企业名称 / 行业 / 法人 / 地址" value={keyword} onChange={e => { setKeyword(e.target.value); setVisible(PAGE); }}/></label>
-      {!parkOnly && <label className="workspace-park-filter"><span className="sr-only">按园区筛选</span><select value={parkFilter} onChange={e => { setParkFilter(e.target.value); setVisible(PAGE); }}><option value="">全部园区</option>{parkNames.map(name => <option key={name} value={name}>{name}</option>)}</select></label>}
+      {!parkOnly && !buildingOnly && <label className="workspace-park-filter"><span className="sr-only">按园区筛选</span><select value={parkFilter} onChange={e => { setParkFilter(e.target.value); setVisible(PAGE); }}><option value="">全部园区</option>{parkNames.map(name => <option key={name} value={name}>{name}</option>)}</select></label>}
+      {buildingOnly && buildings.length > 1 && <label className="workspace-park-filter"><span className="sr-only">按楼栋筛选</span><select value={buildingFilter} onChange={e => { setBuildingFilter(e.target.value); setVisible(PAGE); }}><option value="">全部负责楼栋</option>{buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>}
       <input ref={fileInput} type="file" accept=".xlsx,.xlsm,.csv" hidden onChange={e => void chooseFile(e.target.files)}/>
-      <button className="admin-secondary" type="button" disabled={busy} onClick={() => fileInput.current?.click()}>{busy ? <LoaderCircle className="feedback-spinner" size={16}/> : <Upload size={18}/>} 导入 Excel / CSV</button>
+      {!buildingOnly && <button className="admin-secondary" type="button" disabled={busy} onClick={() => fileInput.current?.click()}>{busy ? <LoaderCircle className="feedback-spinner" size={16}/> : <Upload size={18}/>} 导入 Excel / CSV</button>}
       <button className="admin-secondary" type="button" disabled={busy || !filtered.length} onClick={exportAll}><Download size={18}/> 导出</button>
       <button className="admin-primary" type="button" disabled={busy} onClick={startNew}><Plus size={18}/> 新增企业</button>
     </div>
@@ -310,13 +351,14 @@ export function CompanyWorkspace({ parks, assignedPark, parkOnly, onBusy }: Prop
     {error && <div className="admin-error" role="alert">{error}</div>}
     <div className="workspace-card">
       <div className="workspace-card-heading"><h2>企业名录</h2><span className="workspace-help">共 {filtered.length} 家{keyword || parkFilter ? '（已筛选）' : ''} · 前台看到的是打码后的版本</span></div>
-      {filtered.length === 0 ? <div className="admin-empty">还没有企业数据。可以点「导入 Excel / CSV」批量导入，或「新增企业」逐家录入。</div> : <>
+      {filtered.length === 0 ? <div className="admin-empty">{buildingOnly ? '这栋楼还没有企业资料。点「新增企业」逐家录入；批量导入请让超级管理员操作。' : '还没有企业数据。可以点「导入 Excel / CSV」批量导入，或「新增企业」逐家录入。'}</div> : <>
         <div className="visitor-table-scroll" style={{ maxHeight: '60vh', overflow: 'auto' }}>
           <table className="visitor-table">
-            <thead><tr><th>企业名称</th><th>园区</th><th>行业</th><th>状态</th><th>法人</th><th>电话</th><th>操作</th></tr></thead>
+            <thead><tr><th>企业名称</th><th>园区</th>{buildingOnly && <th>楼栋</th>}<th>行业</th><th>状态</th><th>法人</th><th>电话</th><th>操作</th></tr></thead>
             <tbody>{filtered.slice(0, visible).map(item => <tr key={item.id}>
               <td>{item.name}{item.tags.length > 0 && <small>{item.tags.join('、')}</small>}</td>
               <td>{item.park || '—'}</td>
+              {buildingOnly && <td>{item.building || '—'}{item.floor && <small>{item.floor}</small>}</td>}
               <td>{item.industry || '—'}</td>
               <td data-nowrap>{item.status || '—'}</td>
               <td>{item.legal_representative || '—'}</td>

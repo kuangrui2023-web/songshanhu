@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Building2, MessageSquare, BarChart3, MapPin, Settings, Briefcase } from 'lucide-react';
+import { Building, Building2, MessageSquare, BarChart3, MapPin, Settings, Briefcase } from 'lucide-react';
 
 const tabs = [
   { key: 'listings', label: '房源', icon: Building2 },
+  { key: 'buildings', label: '楼栋', icon: Building },
   { key: 'companies', label: '企业', icon: Briefcase },
   { key: 'inquiries', label: '留言', icon: MessageSquare },
   { key: 'stats', label: '数据', icon: BarChart3 },
@@ -16,7 +17,9 @@ export type AdminSection = typeof tabs[number]['key'];
 type Axis = { value: number; velocity: number; target: number; stiffness: number; mass: number; bounce: number; start: number };
 const axis = (value: number): Axis => ({ value, velocity: 0, target: value, stiffness: 580, mass: .9, bounce: .25, start: 0 });
 
-export function AdminTabs({ section, pending, disabled, onChange }: { section: AdminSection; pending: number; disabled: boolean; onChange: (section: AdminSection) => void }) {
+export function AdminTabs({ section, pending, disabled, onChange, allowed }: { section: AdminSection; pending: number; disabled: boolean; onChange: (section: AdminSection) => void; allowed?: AdminSection[] }) {
+  const items = allowed && allowed.length ? tabs.filter(tab => allowed.includes(tab.key)) : tabs;
+  const allowedKey = allowed?.join(",") || "";
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const bar = ref.current;
@@ -129,7 +132,7 @@ export function AdminTabs({ section, pending, disabled, onChange }: { section: A
       reduced.removeEventListener('change', measure);
       buttons.forEach(button => { button.style.removeProperty('transform'); button.classList.remove('jelly-hovered'); });
     };
-  }, [disabled]);
+  }, [disabled, allowedKey]);
 
   return <div ref={ref} className="admin-workspace-tabs admin-jelly-tabs" role="tablist" aria-label="后台管理板块" onKeyDown={event => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -138,5 +141,5 @@ export function AdminTabs({ section, pending, disabled, onChange }: { section: A
     if (index < 0 || !buttons.length) return;
     event.preventDefault();
     buttons[event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length].focus();
-  }}>{tabs.map(tab => <button key={tab.key} role="tab" type="button" tabIndex={section === tab.key ? 0 : -1} aria-selected={section === tab.key} aria-controls="admin-section" id={`tab-${tab.key}`} disabled={disabled} className={section === tab.key ? 'active' : ''} onClick={() => onChange(tab.key)}><tab.icon size={18}/>{tab.label}{tab.key === 'inquiries' && pending > 0 && <small>{pending}</small>}</button>)}</div>;
+  }}>{items.map(tab => <button key={tab.key} role="tab" type="button" tabIndex={section === tab.key ? 0 : -1} aria-selected={section === tab.key} aria-controls="admin-section" id={`tab-${tab.key}`} disabled={disabled} className={section === tab.key ? 'active' : ''} onClick={() => onChange(tab.key)}><tab.icon size={18}/>{tab.label}{tab.key === 'inquiries' && pending > 0 && <small>{pending}</small>}</button>)}</div>;
 }

@@ -137,6 +137,7 @@ function companyHomeSection() {
 /* ---------------- 首页 ---------------- */
 function renderHome() {
   const online = onlineListings();
+  const buildingSection = window.SiteBuildings ? window.SiteBuildings.homeSection() : '';
   const filtered = applyFilters(online, State.filters);
   const totalArea = online.reduce((s, l) => s + l.area, 0);
   const parkCount = new Set(online.map(l => l.region).filter(Boolean)).size;
@@ -182,6 +183,8 @@ function renderHome() {
 
   ${window.HomeSearch.markup(online)}
 
+  ${buildingSection}
+
   <div class="filter-bar">
     <button class="filter-chip ${activeCount ? 'on' : ''}" type="button" data-act="open:filter">
       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 5h18M6 12h12M10 19h4" stroke-linecap="round"/></svg>
@@ -194,7 +197,7 @@ function renderHome() {
   ${(activeCount||f.kw) ? `<div class="active-filters" aria-label="已应用的筛选条件"><span>已选</span>${selectedFilters.map(([key,label])=>`<button type="button" data-act="filters:remove" data-v="${key}" aria-label="清除${label}条件">${esc(label)}：${esc(['area','rent'].includes(key)?rangeLabel(f[key],key):f[key])}<span aria-hidden="true">×</span></button>`).join('')}${f.kw?`<button type="button" data-act="filters:remove" data-v="kw" aria-label="清除搜索条件">搜索：${esc(f.kw)}<span aria-hidden="true">×</span></button>`:''}<button class="active-filters-reset" type="button" data-act="filters:reset">清除条件</button></div>` : ''}
 
   <div class="sec-title">
-    <h2>${f.usage !== '全部' ? esc(f.usage) + '房源' : '精选房源'}</h2>
+    <h2>${f.usage !== '全部' ? esc(f.usage) + '房源' : (buildingSection ? '全部房源' : '精选房源')}</h2>
     <span class="sec-more">${State.listingsLoading ? "正在读取…" : State.listingsError ? "暂未取得数据" : "共 " + filtered.length + " 套"} · <span data-act="open:filter" style="color:var(--primary)">排序筛选</span></span>
   </div>
   <div class="listing-list">
@@ -1342,7 +1345,7 @@ async function aiAsk(preset) {
 
 /* ---------------- 视图切换 ---------------- */
 const TAB_META = { home: '松山湖产业招商网站', message: '我的留言', mine: '我的' };
-const VIEW_TITLE = { detail: '房源详情', admin: '管理后台', resources: '产业资源', companies: '入驻企业', company: '企业详情' };
+const VIEW_TITLE = { detail: '房源详情', admin: '管理后台', resources: '产业资源', companies: '入驻企业', company: '企业详情', building: '楼栋详情' };
 const TAB_VIEWS = ['home', 'message', 'mine'];
 const ICONS = {
   home: '<path d="M3 10l9-7 9 7v10a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><path d="M9 21V12h6v9"/>',
@@ -1359,11 +1362,18 @@ function syncUrl() {
   try {
     const u = new URL(location.href);
     if (State.view === 'detail' && State.params.id) {
-      if (u.searchParams.get('id') === State.params.id) return;
+      if (u.searchParams.get('id') === State.params.id && !u.searchParams.has('building')) return;
       u.searchParams.set('id', State.params.id);
-    } else {
-      if (!u.searchParams.has('id')) return;
+      u.searchParams.delete('building');
+    } else if (State.view === 'building' && State.params.buildingId) {
+      /* 楼栋导览也写进地址栏：?building=楼栋ID，方便招商顾问把一栋楼直接发给客户 */
+      if (u.searchParams.get('building') === State.params.buildingId && !u.searchParams.has('id')) return;
+      u.searchParams.set('building', State.params.buildingId);
       u.searchParams.delete('id');
+    } else {
+      if (!u.searchParams.has('id') && !u.searchParams.has('building')) return;
+      u.searchParams.delete('id');
+      u.searchParams.delete('building');
     }
     history.replaceState(null, '', u.pathname + u.search + (u.hash || ''));
   } catch (e) { /* 某些容器不支持，静默跳过 */ }
@@ -1382,6 +1392,10 @@ function syncTitle() {
       }
       return;
     }
+  }
+  if (State.view === 'building') {
+    const b = (window.SiteBuildings?.state?.buildings || []).find(item => item.id === State.params.buildingId);
+    if (b) { document.title = b.name + ' · 楼层导览'; return; }
   }
   document.title = SITE_TITLE;
   if (WxShare.ready || WxShare.pending) {
@@ -1409,6 +1423,9 @@ function setView(name, push, navigation = {}) {
   if (!isTab && name === 'detail') {
     navRight = `<button class="nav-btn" type="button" data-act="open:share" data-id="${esc(State.params.id || '')}">分享</button>`
       + '<button class="nav-btn ghost" type="button" data-act="tab" data-v="home">首页</button>';
+  } else if (!isTab && name === 'building') {
+    navRight = '<button class="nav-btn" type="button" data-act="building:share">分享这栋楼</button>'
+      + '<button class="nav-btn ghost" type="button" data-act="tab" data-v="home">首页</button>';
   } else if (!isTab) {
     navRight = '<button class="nav-btn ghost" type="button" data-act="tab" data-v="home">首页</button>';
   } else if (name === 'home') {
@@ -1434,7 +1451,8 @@ function updateSiteHeader() {
   $$('.desktop-nav button').forEach(button => {
     const active = button.dataset.v === State.view
       || (button.dataset.act === 'open:resources' && State.view === 'resources')
-      || (button.dataset.act === 'open:companies' && (State.view === 'companies' || State.view === 'company'));
+      || (button.dataset.act === 'open:companies' && (State.view === 'companies' || State.view === 'company'))
+      || (State.view === 'building' && button.dataset.v === 'home');
     button.classList.toggle('active', active);
     if (active) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current');
   });
@@ -1497,7 +1515,7 @@ function bindDetailMap() {
 }
 
 function render() {
-  const map = { home: renderHome, message: renderMessage, mine: renderMine, detail: renderDetail, admin: renderAdmin, resources: renderResources, companies: window.renderCompanies, company: window.renderCompany };
+  const map = { home: renderHome, message: renderMessage, mine: renderMine, detail: renderDetail, admin: renderAdmin, resources: renderResources, companies: window.renderCompanies, company: window.renderCompany, building: window.renderBuilding };
   const fn = map[State.view];
   const el = $('#view-' + State.view);
   window.SiteMotion?.beforeRender(el);
@@ -3720,6 +3738,21 @@ document.addEventListener('click', e => {
       else sheetShare('site', '');
       break;
     }
+    case 'building:share': {
+      /* 直接分享当前楼栋的深链：优先系统分享（手机），否则复制链接 */
+      const url = (State.view === 'building' && State.params.buildingId)
+        ? shareLink({ building: State.params.buildingId }) : shareLink({});
+      const b = (window.SiteBuildings?.state?.buildings || []).find(item => item.id === State.params.buildingId);
+      const title = b ? b.name + ' · 楼层导览' : '松山湖楼栋导览';
+      const fallback = () => copyText(url).then(ok => toast(ok ? '链接已复制，粘贴给微信好友即可' : '复制失败，请手动复制地址栏链接'));
+      if (navigator.share) {
+        navigator.share({ title, text: '查看每层入驻企业与空置办公室', url }).catch(err => {
+          if (err && err.name === 'AbortError') return; /* 用户主动取消，不打扰 */
+          fallback();
+        });
+      } else fallback();
+      break;
+    }
     case 'share:wx': doShareWx(); break;
     case 'share:copy': doShareCopy(); break;
     case 'share:poster': doSharePoster(); break;
@@ -4317,9 +4350,16 @@ function boot() {
   let deepId = sp.get('id') || '';
   if (!deepId && pathM) { try { deepId = decodeURIComponent(pathM[1]); } catch (e) { deepId = pathM[1]; } }
   const deepPark = sp.get('park');
+  const deepBuilding = sp.get('building') || '';
   const l = deepId ? findListing(deepId) : null;
 
-  if (l) {
+  if (deepBuilding) {
+    /* 楼栋深链：数据由 buildings.js 异步读取，先进入导览页，读完自动渲染；找不到会提示已下架 */
+    State.params.buildingId = deepBuilding;
+    if (typeof window.SiteBuildings?.load === 'function') void window.SiteBuildings.load(false);
+    if (typeof window.SiteCompanies?.load === 'function') void window.SiteCompanies.load(false);
+    setView('building', false);
+  } else if (l) {
     deepOpenFound(l);
   } else if (deepId) {
     /* 本地暂无该房源：先进详情页"云端加载中"状态，等 pull 完成后判定（见上方 pull 回调） */

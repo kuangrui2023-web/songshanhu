@@ -26,7 +26,10 @@ const order = [
   "ai_search.sql",
   "visitor_analytics.sql",
   "visitor_export.sql",
-  "customer_accounts.sql"
+  "customer_accounts.sql",
+  "companies.sql",
+  "buildings.sql",
+  "building_admins.sql"
 ];
 
 const parts = [

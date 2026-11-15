@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { BarChart3, Building2, Check, Download, MapPin, MessageSquare, Plus, Search, ShieldCheck, Users } from "lucide-react";
 import type { LiveListing, SavedInquiry } from "@/lib/backend";
-import { readSession } from "@/lib/backend";
+import { readSession, type AdminRole } from "@/lib/backend";
 import { beijingDate, inquiryExport, matchesInquiry } from '@/lib/inquiries';
 import { sitePath } from '@/lib/site-path';
 import { VisitorAnalytics } from '@/components/visitor-analytics';
 import { CustomerProfiles } from '@/components/customer-profiles';
-import { ALL_PARKS_SCOPE, adminRoleLabel, AdminEntry, changeOwnPassword, checkAdminService, createAdminAccount, downloadCsv, loadDirectory, manageAdmin, Metrics, Park, saveInquiry, savePark, saveSettings, SiteSettings, WorkspaceError } from "@/lib/admin-workspace";
+import { ALL_PARKS_SCOPE, BUILDINGS_SCOPE, adminRoleLabel, AdminEntry, changeOwnPassword, checkAdminService, createAdminAccount, downloadCsv, loadDirectory, manageAdmin, Metrics, Park, saveInquiry, savePark, saveSettings, SiteSettings, WorkspaceError } from "@/lib/admin-workspace";
 
 const date = (value?: string | null) => value ? new Date(value).toLocaleString("zh-CN", {hour12:false}) : "—";
 const detail = (e: unknown) => e instanceof Error ? e.message : "操作未完成，请稍后重试。";
@@ -140,14 +140,17 @@ export function SettingsWorkspace({settings,parks,isSuper,onRefresh}: {settings:
     setAccountError("");setAccountRecovery(false);setError("");setMessage("");
     const email=account.email.trim().toLowerCase();
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setAccountError("请填写正确的邮箱地址。");return;}
-    if(account.park!==ALL_PARKS_SCOPE&&!parks.some(park=>park.active&&park.name===account.park)){setAccountError("请选择「全部园区」或一个启用的园区。");return;}
+    const buildingScope=account.park===BUILDINGS_SCOPE;
+    if(!buildingScope&&account.park!==ALL_PARKS_SCOPE&&!parks.some(park=>park.active&&park.name===account.park)){setAccountError("请选择「全部园区」「楼栋管理员」或一个启用的园区。");return;}
     if(!account.existing&&(account.password.length<12||account.password.length>128)){setAccountError("新账号的初始密码需要 12–128 位。");return;}
     if(!account.existing&&account.password!==account.repeat){setAccountError("两次输入的初始密码不一致。");return;}
     if(!account.existing&&!accountService.ready){setAccountError(accountService.checking?"正在核对账号服务连接，请稍候再提交。":accountService.error||"账号服务尚未连接，请点击「重试连接账号服务」。");return;}
     accountPending.current=true;setBusy(true);
+    const newRole:AdminRole=account.park===ALL_PARKS_SCOPE?"content_admin":buildingScope?"building_admin":"park_admin";
+    const scopePark=buildingScope||newRole==="content_admin"?null:account.park;
     try {
-      if(account.existing)await manageAdmin("add",{email,display_name:account.name.trim(),park:account.park});
-      else await createAdminAccount({email,name:account.name.trim(),park:account.park,password:account.password});
+      if(account.existing)await manageAdmin("add",{email,display_name:account.name.trim(),park:scopePark,role:newRole});
+      else await createAdminAccount({email,name:account.name.trim(),park:scopePark,role:newRole,password:account.password});
       setAccount(null);setMessage("管理权限已开通，可使用该邮箱和本站密码登录后台。");
       const refreshed=await Promise.allSettled([loadDirectory(),onRefresh()]);
       if(refreshed[0].status==="fulfilled"){setDirectory(refreshed[0].value);setDirectoryError("");}else setDirectoryError(detail(refreshed[0].reason));
@@ -171,7 +174,7 @@ export function SettingsWorkspace({settings,parks,isSuper,onRefresh}: {settings:
       {directoryError&&<p className="admin-error" role="alert">管理员列表未刷新：{directoryError}</p>}
       {isSuper&&<p className="workspace-help">可选择单个园区或「全部园区（房源与留言）」。全园区管理员不能管理账号或修改平台设置；停用或移除权限不会删除业务数据和登录账号。</p>}
       {!loading&&!directoryError&&directory.length===0&&<p className="admin-empty">暂无可查看的管理员账号。</p>}
-      {directory.map(entry=><article className="workspace-member" key={entry.user_id}><div className={`workspace-member-avatar ${entry.role==="superadmin"?"super":""}`}>{entry.role==="superadmin"?"超":"管"}</div><div className="workspace-member-info"><h3>{entry.display_name||adminRoleLabel(entry.role)}<small className="workspace-role">{entry.active?adminRoleLabel(entry.role):"已停用"}</small></h3><p>{entry.email}</p>{entry.role==="content_admin"?<p>管理范围：全部园区（房源与留言）</p>:entry.park&&<p>负责园区：{entry.park}</p>}<small>创建 {date(entry.created_at)} · 最近登录 {date(entry.last_sign_in_at)}</small></div><div className="workspace-actions vertical">
+      {directory.map(entry=><article className="workspace-member" key={entry.user_id}><div className={`workspace-member-avatar ${entry.role==="superadmin"?"super":""}`}>{entry.role==="superadmin"?"超":"管"}</div><div className="workspace-member-info"><h3>{entry.display_name||adminRoleLabel(entry.role)}<small className="workspace-role">{entry.active?adminRoleLabel(entry.role):"已停用"}</small></h3><p>{entry.email}</p>{entry.role==="content_admin"?<p>管理范围：全部园区（房源与留言）</p>:entry.role==="building_admin"?<p>负责楼栋：在「楼栋」页分配</p>:entry.park&&<p>负责园区：{entry.park}</p>}<small>创建 {date(entry.created_at)} · 最近登录 {date(entry.last_sign_in_at)}</small></div><div className="workspace-actions vertical">
         {entry.user_id===readSession()?.user.id&&<button disabled={busy} className="workspace-op neutral" onClick={()=>{setPasswordForm(!passwordForm);setNewPassword("");setRepeatPassword("");setError("");setMessage("");}}>修改密码</button>}
         {isSuper&&<button disabled={busy} className="workspace-op" onClick={()=>{setMember({...entry});setAccount(null);setError("");setMessage("");}}>编辑</button>}
         {isSuper&&entry.role!=="superadmin"&&<><button disabled={busy} className="workspace-op neutral" onClick={()=>{if(confirm(entry.active?"停用该管理员的后台权限？":"重新启用该管理员？"))void run(()=>manageAdmin("update",{...entry,active:!entry.active}),"管理权限已更新。");}}>{entry.active?"停用":"启用"}</button><button disabled={busy} className="workspace-op danger" onClick={()=>{if(confirm("移除该账号的管理权限？登录账号会保留，之后可以重新授权。"))void run(()=>manageAdmin("remove",entry),"管理权限已移除。");}}>移除</button></>}
@@ -192,10 +195,10 @@ export function SettingsWorkspace({settings,parks,isSuper,onRefresh}: {settings:
         <div className="admin-form-grid">
           <label>邮箱 *<input type="email" required maxLength={254} autoComplete="off" value={account.email} onChange={e=>setAccount({...account,email:e.target.value})}/></label>
           <label>姓名<input maxLength={60} value={account.name} onChange={e=>setAccount({...account,name:e.target.value})}/></label>
-          <label>管理范围 *<select required value={account.park} onChange={e=>setAccount({...account,park:e.target.value})}><option value="" disabled>请选择管理范围</option><option value={ALL_PARKS_SCOPE}>全部园区（房源与留言）</option>{parks.filter(x=>x.active).map(x=><option key={x.id} value={x.name}>{x.name}</option>)}</select></label>
+          <label>管理范围 *<select required value={account.park} onChange={e=>setAccount({...account,park:e.target.value})}><option value="" disabled>请选择管理范围</option><option value={ALL_PARKS_SCOPE}>全部园区（房源与留言）</option><option value={BUILDINGS_SCOPE}>楼栋管理员（到「楼栋」里分配具体楼栋）</option>{parks.filter(x=>x.active).map(x=><option key={x.id} value={x.name}>{x.name}</option>)}</select></label>
           {!account.existing&&<><label>初始密码 *<input type="password" autoComplete="new-password" minLength={12} maxLength={128} required placeholder="12–128 位，由你设置" value={account.password} onChange={e=>setAccount({...account,password:e.target.value})}/></label><label>再次输入初始密码 *<input type="password" autoComplete="new-password" minLength={12} required value={account.repeat} onChange={e=>setAccount({...account,repeat:e.target.value})}/></label></>}
         </div>
-        <p className="workspace-help">{account.park===ALL_PARKS_SCOPE?"该账号可管理全部园区的房源和留言（含未关联房源的咨询），不能管理其他管理员或修改平台设置。":"该账号仅管理所选园区的房源及关联留言。"}不会自动发送邀请邮件。</p>
+        <p className="workspace-help">{account.park===ALL_PARKS_SCOPE?"该账号可管理全部园区的房源和留言（含未关联房源的咨询），不能管理其他管理员或修改平台设置。":account.park===BUILDINGS_SCOPE?"该账号只能管理被指定为负责人的楼栋、楼内空置单元和该楼企业。保存后请到「楼栋」→ 编辑 → 选择负责人。":"该账号仅管理所选园区的房源及关联留言。"}不会自动发送邀请邮件。</p>
         <div ref={accountFeedback} className="workspace-account-feedback" aria-live="polite" aria-atomic="true">
           {busy&&<p className="admin-message" role="status">正在连接云端并开通权限，请勿重复提交…</p>}
           {accountError&&<><p className="admin-error" role="alert">{accountError}</p><button type="button" className="admin-secondary" disabled={loading} onClick={()=>void reloadDirectory()}>刷新管理员列表核对</button></>}
@@ -204,7 +207,7 @@ export function SettingsWorkspace({settings,parks,isSuper,onRefresh}: {settings:
         <div className="workspace-actions"><button className="admin-primary" type="submit" disabled={!account.existing&&accountService.checking}>{busy?"开通中…":!account.existing&&accountService.checking?"连接账号服务中…":account.existing?"授予管理权限":"创建账号并开通权限"}</button><button type="button" className="admin-secondary" onClick={()=>{setAccount(null);setAccountError("");}}>取消</button></div>
       </fieldset>
     </form>}
-    {member&&<form className="workspace-card" onSubmit={e=>{e.preventDefault();void run(()=>manageAdmin("update",member),"管理员信息已保存。");}}><h2>编辑管理员</h2><fieldset className="admin-fields" disabled={busy}><div className="admin-form-grid"><label>邮箱<input disabled value={member.email}/></label><label>姓名<input maxLength={60} value={member.display_name} onChange={e=>setMember({...member,display_name:e.target.value})}/></label>{member.role!=="superadmin"&&<label>管理范围<select required value={member.role==="content_admin"?ALL_PARKS_SCOPE:member.park||""} onChange={e=>setMember({...member,role:e.target.value===ALL_PARKS_SCOPE?"content_admin":"park_admin",park:e.target.value===ALL_PARKS_SCOPE?null:e.target.value})}><option value={ALL_PARKS_SCOPE}>全部园区（房源与留言）</option>{parks.filter(x=>x.active).map(x=><option key={x.id}>{x.name}</option>)}</select></label>}</div><div className="workspace-actions"><button className="admin-primary">保存管理员</button><button type="button" className="admin-secondary" onClick={()=>setMember(null)}>取消</button></div></fieldset></form>}
+    {member&&<form className="workspace-card" onSubmit={e=>{e.preventDefault();void run(()=>manageAdmin("update",member),"管理员信息已保存。");}}><h2>编辑管理员</h2><fieldset className="admin-fields" disabled={busy}><div className="admin-form-grid"><label>邮箱<input disabled value={member.email}/></label><label>姓名<input maxLength={60} value={member.display_name} onChange={e=>setMember({...member,display_name:e.target.value})}/></label>{member.role!=="superadmin"&&<label>管理范围<select required value={member.role==="content_admin"?ALL_PARKS_SCOPE:member.role==="building_admin"?BUILDINGS_SCOPE:member.park||""} onChange={e=>{const value=e.target.value;setMember({...member,role:value===ALL_PARKS_SCOPE?"content_admin":value===BUILDINGS_SCOPE?"building_admin":"park_admin",park:value===ALL_PARKS_SCOPE||value===BUILDINGS_SCOPE?null:value});}}><option value={ALL_PARKS_SCOPE}>全部园区（房源与留言）</option><option value={BUILDINGS_SCOPE}>楼栋管理员（到「楼栋」里分配）</option>{parks.filter(x=>x.active).map(x=><option key={x.id}>{x.name}</option>)}</select></label>}</div><div className="workspace-actions"><button className="admin-primary">保存管理员</button><button type="button" className="admin-secondary" onClick={()=>setMember(null)}>取消</button></div></fieldset></form>}
     <form className="workspace-card" onSubmit={e=>{e.preventDefault();void run(()=>saveSettings(draft),"平台参数已保存，网站刷新后生效。");}}><div className="workspace-card-heading"><h2>平台参数</h2>{!isSuper&&<span>仅查看</span>}</div><fieldset className="admin-fields" disabled={busy||!isSuper}><div className="admin-form-grid"><label>平台名称<input required maxLength={60} value={draft.platform_name} onChange={e=>setDraft({...draft,platform_name:e.target.value})}/></label><label>招商热线<input type="tel" maxLength={40} value={draft.hotline} onChange={e=>setDraft({...draft,hotline:e.target.value})}/></label><label>管理员人数上限<input type="number" min={Math.max(1,directory.length)} max={20} required value={draft.admin_limit} onChange={e=>setDraft({...draft,admin_limit:Number(e.target.value)})}/></label><label>分享标题<input maxLength={120} value={draft.share_title} onChange={e=>setDraft({...draft,share_title:e.target.value})}/></label><label className="admin-wide">分享简介<textarea rows={3} maxLength={240} value={draft.share_description} onChange={e=>setDraft({...draft,share_description:e.target.value})}/></label><label className="admin-wide">分享封面图片网址<input type="url" pattern="https://.*" value={draft.share_image} placeholder="https://…（可留空）" onChange={e=>setDraft({...draft,share_image:e.target.value})}/></label></div><p className="workspace-help">平台名称、热线和分享信息会公开展示。房源自己的联系人与电话优先显示。</p>{isSuper&&<button className="admin-primary">{busy?"保存中…":"保存平台参数"}</button>}</fieldset></form>
   </div>;
 }

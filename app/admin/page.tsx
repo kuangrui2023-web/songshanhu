@@ -8,12 +8,13 @@ import { InquiryWorkspace, ParkWorkspace, SettingsWorkspace, WorkspaceStats } fr
 import { ListingFields, ListingPreview } from "@/components/listing-fields";
 import { listingErrors } from "@/lib/listing-editor";
 import { sitePath } from "@/lib/site-path";
-import { AdminTabs } from "@/components/admin-tabs";
+import { AdminTabs, type AdminSection } from "@/components/admin-tabs";
 import { InquiryNotifier } from '@/components/inquiry-notifier';
 import { listingCode } from '@/lib/listing-code';
 import { prepareListingImage,imageSizeLabel } from '@/lib/image-upload';
 import { ListingBulkImport } from '@/components/listing-bulk-import';
 import { CompanyWorkspace } from '@/components/company-workspace';
+import { BuildingWorkspace } from '@/components/building-workspace';
 import { filterListings, listingExport, loadListingExport } from '@/lib/listing-export';
 
 const blank = (): LiveListing => ({ id: crypto.randomUUID(), title: "", category: "写字楼", unit_split:true,field_visibility:{room:false}, park: null, unit: null, floor: null, area: null, price: null, fee: null, facing: null, layout: null, decoration: null, description: null, address: null, latitude: null, longitude: null, contact_name: null, contact_phone: null, owner_contact_name: null, owner_contact_phone: null, tag: null, images: [], videos: [], status: "draft" });
@@ -30,7 +31,7 @@ export default function AdminPage() {
   const [items, setItems] = useState<LiveListing[]>([]);
   const [inquiries, setInquiries] = useState<SavedInquiry[]>([]);
   const [inquiriesLoaded,setInquiriesLoaded]=useState(false);
-  const [section, setSection] = useState<"listings" | "companies" | "inquiries" | "stats" | "map" | "parks" | "settings">("listings");
+  const [section, setSection] = useState<"listings" | "buildings" | "companies" | "inquiries" | "stats" | "map" | "parks" | "settings">("listings");
   const [parks, setParks] = useState<Park[]>([]);
   const [settings, setSettings] = useState<SiteSettings>(defaultSettings);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -51,7 +52,11 @@ export default function AdminPage() {
   useEffect(() => {
     if (!backendReady || !readSession()) { setChecking(false); return; }
     adminProfile().then(async profile => {
-      if (profile) { setRole(profile.role); setAssignedPark(profile.park || null); setEmail(readSession()?.user.email || ""); setAuthorized(true); await refreshData(); }
+      if (profile) {
+        setRole(profile.role); setAssignedPark(profile.park || null);
+        if (profile.role === "building_admin") setSection("buildings");
+        setEmail(readSession()?.user.email || ""); setAuthorized(true); await refreshData();
+      }
       else signOut();
     }).catch(e => setError(e instanceof Error ? e.message : "连接失败")).finally(() => setChecking(false));
   }, []);
@@ -72,6 +77,12 @@ export default function AdminPage() {
   const liveItems = items.filter(item=>!item.deleted_at);
   const activeInquiries = inquiries.filter(item=>!item.deleted_at);
   const pending = activeInquiries.filter(item=>(item.status||"pending")==="pending").length;
+  // 只显示该角色真正能维护的板块；真正的数据边界仍由数据库 RLS 控制。
+  const allowedSections: AdminSection[] | undefined = role === "building_admin"
+    ? ["buildings", "companies", "settings"]
+    : role === "park_admin"
+      ? ["listings", "buildings", "companies", "inquiries", "stats", "map", "settings"]
+      : undefined;
   const visibleItems = filterListings(items,{status:statusFilter,park:parkFilter,keyword});
   async function exportListings(){
     const filters={status:statusFilter,park:parkFilter,keyword};
@@ -126,7 +137,9 @@ export default function AdminPage() {
       await signIn(email, password);
       const profile = await adminProfile();
       if (!profile) { signOut(); throw new Error("该邮箱尚未开通管理权限，或权限已停用，请联系网站负责人。"); }
-      setRole(profile.role); setAssignedPark(profile.park || null); setAuthorized(true); setPassword(""); await refreshData();
+      setRole(profile.role); setAssignedPark(profile.park || null);
+      if (profile.role === "building_admin") setSection("buildings");
+      setAuthorized(true); setPassword(""); await refreshData();
     } catch (e) { setError(e instanceof Error ? e.message : "登录失败"); }
     finally { setChecking(false); }
   }
@@ -213,12 +226,12 @@ export default function AdminPage() {
   return <div className="admin-shell">
     <header className="admin-header"><a href={sitePath("/")}><ArrowLeft size={18}/>返回网站</a><strong>{settings.platform_name} · 管理后台</strong>{authorized && <button disabled={saving} onClick={logout}><LogOut size={17}/>退出</button>}</header>
     {!backendReady ? <main className="admin-center"><div className="admin-panel"><h1>管理后台待开通</h1><p>房源展示页已经可以显示实拍照片。网页内上传和跨设备管理需要先连接数据库与文件存储服务；当前网站尚未配置该服务。</p><p>开通后，此处可以登录并上传照片、视频，填写房源资料，保存草稿或发布。</p></div></main> : checking ? <main className="admin-center"><div className="admin-panel"><p>正在连接管理后台…</p></div></main> : !authorized ? <main className="admin-center"><form className="admin-panel" onSubmit={login} noValidate><h1>管理员登录</h1><p>请用本站已开通的管理员邮箱登录，不能填写 admin，也不能使用 WorkBuddy 的账号密码。</p><label>管理员邮箱<input type="email" required autoComplete="username" inputMode="email" autoCapitalize="none" spellCheck={false} placeholder="例如 name@qq.com" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>密码<input type="password" required autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)}/></label><button className="admin-primary" type="submit">登录</button>{error && <p className="admin-error" role="alert">{error}</p>}</form></main> : <main className="admin-main">
-      <section className="admin-overview"><div className="admin-overview-identity"><div className={`admin-overview-avatar ${role==="superadmin"?"super":""}`}>{role==="superadmin"?"超":"管"}</div><div><h1>{role?adminRoleLabel(role):"管理员"}</h1><span>{role==="superadmin"?"全部管理权限":role==="content_admin"?"全部园区 · 房源与留言":assignedPark}</span><p>{email}</p></div><button className="admin-overview-refresh" disabled={saving||refreshing} onClick={()=>{setError("");void refreshData();}}><RefreshCw size={17} className={refreshing?"feedback-spinner":""}/>{refreshing?"刷新中":"刷新数据"}</button></div><div className="admin-overview-counts"><div><strong>{liveItems.filter(x=>x.status==="published").length}</strong><span>在租房源</span></div><div><strong>{pending}</strong><span>待处理留言</span></div><div><strong>{metrics?metrics.visitors:"—"}</strong><span>{role==="superadmin"?"累计访客":"房源访客"}</span></div></div></section>
-      <AdminTabs section={section} pending={pending} disabled={saving} onChange={switchSection}/>
+      <section className="admin-overview"><div className="admin-overview-identity"><div className={`admin-overview-avatar ${role==="superadmin"?"super":""}`}>{role==="superadmin"?"超":"管"}</div><div><h1>{role?adminRoleLabel(role):"管理员"}</h1><span>{role==="superadmin"?"全部管理权限":role==="content_admin"?"全部园区 · 房源与留言":role==="building_admin"?"负责楼栋 · 楼内企业与空置单元":assignedPark}</span><p>{email}</p></div><button className="admin-overview-refresh" disabled={saving||refreshing} onClick={()=>{setError("");void refreshData();}}><RefreshCw size={17} className={refreshing?"feedback-spinner":""}/>{refreshing?"刷新中":"刷新数据"}</button></div><div className="admin-overview-counts"><div><strong>{liveItems.filter(x=>x.status==="published").length}</strong><span>在租房源</span></div><div><strong>{pending}</strong><span>待处理留言</span></div><div><strong>{metrics?metrics.visitors:"—"}</strong><span>{role==="superadmin"?"累计访客":"房源访客"}</span></div></div></section>
+      <AdminTabs section={section} pending={pending} disabled={saving} onChange={switchSection} allowed={allowedSections}/>
       {inquiriesLoaded&&<InquiryNotifier key={`${email}:${role}:${assignedPark}`} rows={inquiries} onRows={setInquiries} blocked={saving} visible={section==='inquiries'} onOpen={()=>switchSection('inquiries')}/>}
       <div id="admin-section" role="tabpanel" aria-labelledby={`tab-${section}`}>
       {message && <div className={`admin-message ${saving ? "" : "success-note"}`} role="status">{saving ? <LoaderCircle className="feedback-spinner" size={20}/> : <CheckCircle2 className="success-check"/>}<span>{message}</span></div>}{error && !editing && <div className="admin-error" role="alert">{error}</div>}
-      {section === "companies" ? <CompanyWorkspace parks={parks} assignedPark={assignedPark} parkOnly={role==="park_admin"} onBusy={setSaving}/> : section === "inquiries" ? <InquiryWorkspace items={items} inquiries={inquiries} onRefresh={refreshData}/> : section === "stats" ? <WorkspaceStats items={items} inquiries={inquiries} metrics={metrics} canViewCustomers={role==="superadmin"||role==="content_admin"}/> : section === "parks" ? <ParkWorkspace parks={parks} items={items} isSuper={role==="superadmin"} onRefresh={refreshData}/> : section === "settings" ? <SettingsWorkspace settings={settings} parks={parks} isSuper={role==="superadmin"} onRefresh={refreshData}/> : section === "map" ? <section className="workspace-card workspace-map-placeholder"><MapPin size={36}/><h2>地图标注</h2><p>此处预留自有地图与标注功能。</p><span>暂未导入底图</span></section> : bulkOpen ? <ListingBulkImport parks={parks} assignedPark={assignedPark} parkOnly={role==="park_admin"} onBusy={setSaving} onDirty={setBulkDirty} onClose={()=>{if(bulkDirty&&!confirm("导入预览中还有未保存资料，确定返回列表？"))return;setBulkOpen(false);setBulkDirty(false);}} onRefresh={refreshData}/> : editing ? <form className="admin-editor listing-editor" onSubmit={save} noValidate aria-busy={saving}><div className="admin-editor-heading"><div><h2>{items.some(x=>x.id===editing.id) ? "编辑房源" : "新增房源"}</h2><p>先选择业态，再补充房源资料。资料未齐时可先保存草稿。</p></div><button type="button" disabled={saving} onClick={closeEditor}>返回列表</button></div><fieldset className="admin-fields" disabled={saving}><ListingFields listing={editing} onChange={change} onPark={selectPark} parks={parks} assignedPark={assignedPark} parkOnly={role==="park_admin"} errors={fieldErrors}>
+      {section === "buildings" ? <BuildingWorkspace parks={parks} assignedPark={assignedPark} onBusy={setSaving} canCreate={role==="superadmin"||role==="content_admin"} canDelete={role==="superadmin"||role==="content_admin"} canAssign={role==="superadmin"} buildingOnly={role==="building_admin"}/> : section === "companies" ? <CompanyWorkspace parks={parks} assignedPark={assignedPark} parkOnly={role==="park_admin"} buildingOnly={role==="building_admin"} onBusy={setSaving}/> : section === "inquiries" ? <InquiryWorkspace items={items} inquiries={inquiries} onRefresh={refreshData}/> : section === "stats" ? <WorkspaceStats items={items} inquiries={inquiries} metrics={metrics} canViewCustomers={role==="superadmin"||role==="content_admin"}/> : section === "parks" ? <ParkWorkspace parks={parks} items={items} isSuper={role==="superadmin"} onRefresh={refreshData}/> : section === "settings" ? <SettingsWorkspace settings={settings} parks={parks} isSuper={role==="superadmin"} onRefresh={refreshData}/> : section === "map" ? <section className="workspace-card workspace-map-placeholder"><MapPin size={36}/><h2>地图标注</h2><p>此处预留自有地图与标注功能。</p><span>暂未导入底图</span></section> : bulkOpen ? <ListingBulkImport parks={parks} assignedPark={assignedPark} parkOnly={role==="park_admin"} onBusy={setSaving} onDirty={setBulkDirty} onClose={()=>{if(bulkDirty&&!confirm("导入预览中还有未保存资料，确定返回列表？"))return;setBulkOpen(false);setBulkDirty(false);}} onRefresh={refreshData}/> : editing ? <form className="admin-editor listing-editor" onSubmit={save} noValidate aria-busy={saving}><div className="admin-editor-heading"><div><h2>{items.some(x=>x.id===editing.id) ? "编辑房源" : "新增房源"}</h2><p>先选择业态，再补充房源资料。资料未齐时可先保存草稿。</p></div><button type="button" disabled={saving} onClick={closeEditor}>返回列表</button></div><fieldset className="admin-fields" disabled={saving}><ListingFields listing={editing} onChange={change} onPark={selectPark} parks={parks} assignedPark={assignedPark} parkOnly={role==="park_admin"} errors={fieldErrors}>
       <div className="admin-upload" id="listing-images" tabIndex={-1}><h3><ImagePlus size={20}/>照片与视频</h3><p>第一张照片作为封面。JPG、PNG、WebP 会自动缩至长边不超过 1600 像素并压缩，压缩收益不足时保留原版；按选择顺序逐张处理。HEIC 请先转为 JPG；视频不自动压缩。上传后仍需保存或发布房源。</p><label className="admin-upload-button"><Upload size={18}/>选择照片或视频<input type="file" accept="image/*,video/*" multiple onChange={e=>{void addFiles(e.target.files);e.target.value="";}} disabled={saving}/></label>{fieldErrors.images && <p className="admin-field-error" role="alert">{fieldErrors.images}</p>}
       {uploads.length > 0 && <div className="upload-queue" aria-label="文件上传进度">{uploads.map(file=><div className={`upload-row ${file.state}`} key={file.id}><div className="upload-row-label"><span title={file.name}>{file.name}</span><small>{file.state === "success" ? "上传成功" : file.state === "error" ? "上传失败" : file.state === "queued" ? "等待上传" : file.state === "compressing" ? "正在压缩…" : file.percent >= 99 ? "云端确认中…" : `${file.percent}%`}</small></div><div className="upload-progress" role="progressbar" aria-label={file.name} aria-valuenow={file.percent} aria-valuemin={0} aria-valuemax={100}><i style={{width:`${file.percent}%`}}/></div>{file.optimization && <p className="workspace-help">{file.optimization}</p>}{file.error && <p className="admin-field-error">{file.error}</p>}</div>)}</div>}
       <p className="admin-media-hint">第一张为封面。电脑可拖动照片排序，也可用箭头调整；手机可点“设为封面”。</p>

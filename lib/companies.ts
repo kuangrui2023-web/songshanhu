@@ -5,7 +5,10 @@ export type Company = {
   name: string;
   park: string | null;
   building: string | null;
+  /** 关联楼栋 ID；有值时前台楼层导览按它匹配，不再只靠楼栋名称。 */
+  building_id: string | null;
   room: string | null;
+  floor: string | null;
   industry: string | null;
   status: string | null;
   established_on: string | null;
@@ -30,7 +33,7 @@ export type CompanyInput = Omit<Company, "id" | "created_at" | "updated_at"> & {
 
 export function blankCompany(park: string | null): CompanyInput {
   return {
-    name: "", park, building: null, room: null, industry: null, status: "存续",
+    name: "", park, building: null, building_id: null, room: null, floor: null, industry: null, status: "存续",
     established_on: null, registered_capital: null, employee_band: null,
     legal_representative: null, social_insurance_count: null, unified_code: null,
     phone: null, email: null, address: null, business_scope: null, website: null,
@@ -50,7 +53,10 @@ export function normalizeCompany(input: CompanyInput): CompanyInput {
     name: String(input.name || "").trim().slice(0, 200),
     park: text(input.park, 120),
     building: text(input.building, 60),
+    building_id: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(input.building_id || ""))
+      ? input.building_id : null,
     room: text(input.room, 60),
+    floor: text(input.floor, 30),
     industry: text(input.industry, 120),
     status: text(input.status, 40),
     established_on: /^\d{4}-\d{2}-\d{2}$/.test(String(input.established_on || "")) ? input.established_on : null,

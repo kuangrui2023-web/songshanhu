@@ -2,7 +2,7 @@ import type { CompanyInput } from "./companies";
 import { excelDate } from "./sheet-read";
 
 export const IMPORT_COLUMNS = [
-  "企业名称", "所属园区", "楼栋", "房号", "所属行业", "经营状态", "成立日期",
+  "企业名称", "所属园区", "楼栋", "楼层", "房号", "所属行业", "经营状态", "成立日期",
   "注册资本(万元)", "参保人数", "法定代表人", "联系电话", "邮箱",
   "统一社会信用代码", "注册地址", "经营范围", "官网", "标签",
 ] as const;
@@ -12,6 +12,7 @@ const ALIASES: Record<string, string[]> = {
   park: ["所属园区", "园区", "园区名称"],
   building: ["楼栋", "楼宇", "栋", "楼栋号"],
   room: ["房号", "房间号", "门牌"],
+  floor: ["楼层", "所在楼层", "层数", "层"],
   industry: ["所属行业", "行业"],
   status: ["经营状态", "状态", "企业状态"],
   established_on: ["成立日期", "成立时间", "注册日期", "注册时间"],
@@ -134,7 +135,9 @@ export function parseCompanySheet(table: string[][], allowedParks: string[], sou
       name,
       park,
       building: get("building") || null,
+      building_id: null,
       room: get("room") || null,
+      floor: get("floor") || null,
       industry: get("industry") || null,
       status: get("status") || "存续",
       established_on: cleanDate(get("established_on")),
@@ -159,7 +162,7 @@ export function parseCompanySheet(table: string[][], allowedParks: string[], sou
 
 export function companyCsvRows(list: CompanyInput[]): string[][] {
   return list.map((c) => [
-    c.name, c.park || "", c.building || "", c.room || "", c.industry || "", c.status || "",
+    c.name, c.park || "", c.building || "", c.floor || "", c.room || "", c.industry || "", c.status || "",
     c.established_on || "", c.registered_capital == null ? "" : String(c.registered_capital),
     c.social_insurance_count == null ? "" : String(c.social_insurance_count),
     c.legal_representative || "", c.phone || "", c.email || "", c.unified_code || "",

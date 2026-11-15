@@ -1,5 +1,5 @@
 // Admin-only account creation. Service credentials and passwords never enter logs.
-const allowedOrigins = new Set(['https://ning73988-jpg.github.io','https://denglai.xin','https://www.denglai.xin','https://songshanhu-enterprise-spaces.pages.dev']);
+const allowedOrigins = new Set(['https://kuangrui2023-web.github.io','https://ning73988-jpg.github.io','https://denglai.xin','https://www.denglai.xin','https://songshanhu-enterprise-spaces.pages.dev','http://localhost:3000','http://localhost:3001']);
 Deno.serve(async (request: Request) => {
   const origin = request.headers.get('origin') || '';
   const allowed = allowedOrigins.has(origin);
@@ -34,12 +34,16 @@ Deno.serve(async (request: Request) => {
     if (!input || typeof input !== 'object' || !['check','create'].includes(input.action || 'create')) return respond({message:'不支持的账号操作'},400);
     const checking = input.action === 'check';
     const email = String(input.email||'').trim().toLowerCase(), password = String(input.password||''), name=String(input.name||'').trim(), park=String(input.park||'').trim();
-    const allParks = park === '__all_parks__';
-    if (!checking&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254||password.length<12||password.length>128||!park||park.length>120||name.length>60)) return respond({message:'请填写正确的邮箱、园区和12–128位的新密码'},400);
+    const role = ['content_admin','park_admin','building_admin'].includes(String(input.role||''))
+      ? String(input.role)
+      : park === '__all_parks__' ? 'content_admin' : park === '__buildings__' ? 'building_admin' : 'park_admin';
+    const allParks = role === 'content_admin';
+    const buildingScope = role === 'building_admin';
+    if (!checking&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254||password.length<12||password.length>128||name.length>60||(role==='park_admin'&&(!park||park.length>120)))) return respond({message:'请填写正确的邮箱、管理范围和12–128位的新密码'},400);
     const [directoryResponse,settingsResponse,parkResponse] = await Promise.all([
       call('/rest/v1/rpc/site_admin_directory',{method:'POST',headers:head,body:'{}'}),
       call('/rest/v1/site_settings?select=admin_limit&id=eq.true',{headers:head}),
-      call('/rest/v1/parks?select=id&active=eq.true'+(checking||allParks?'':'&name=eq.'+encodeURIComponent(park)),{headers:head}),
+      call('/rest/v1/parks?select=id&active=eq.true'+(checking||allParks||buildingScope?'':'&name=eq.'+encodeURIComponent(park)),{headers:head}),
     ]);
     if (!directoryResponse.ok) return respond({message:'管理员目录暂未读取成功，请刷新后台后重试'},503);
     if (!settingsResponse.ok) return respond({message:'平台设置暂未读取成功，请刷新后台后重试'},503);
@@ -54,7 +58,7 @@ Deno.serve(async (request: Request) => {
     }
     if (directory.some((entry:{email:string})=>entry.email?.toLowerCase()===email)) return respond({code:'ALREADY_ADMIN',message:'该邮箱已在管理员列表中，请刷新列表后编辑或启用该账号。'},409);
     if (directory.length>=settings[0].admin_limit) return respond({message:'管理员数量已达上限，请先调整上限或移除不再需要的管理权限'},409);
-    if (!allParks&&!parks.length) return respond({message:'请选择一个启用的园区'},400);
+    if (!allParks&&!buildingScope&&!parks.length) return respond({message:'请选择一个启用的园区'},400);
     stage='creating';
     const created = await call('/auth/v1/admin/users',{method:'POST',headers:serviceHead,body:JSON.stringify({email,password,email_confirm:true,user_metadata:{display_name:name}})});
     const account = await created.json().catch(()=>null);
@@ -67,7 +71,7 @@ Deno.serve(async (request: Request) => {
     stage='granting';
     const id = account?.id || account?.user?.id;
     if (!id) return respond({code:'OPERATION_UNCONFIRMED',message:'账号创建结果暂未确认，请刷新列表核对；若邮箱已注册，可使用「授权已有账号」。'},503);
-    const member = await call('/rest/v1/rpc/manage_site_admin',{method:'POST',headers:head,body:JSON.stringify({p_action:'add',p_email:email,p_name:name,p_park:park,p_active:true})});
+    const member = await call('/rest/v1/rpc/manage_site_admin',{method:'POST',headers:head,body:JSON.stringify({p_action:'add',p_email:email,p_name:name,p_park:allParks?'__all_parks__':buildingScope?'__buildings__':park,p_active:true,p_role:role})});
     if (!member.ok) {
       // Keep the newly created login account. Deleting here can race a successful grant.
       // A fresh, explicitly submitted existing-account grant can finish this operation.
@@ -75,7 +79,7 @@ Deno.serve(async (request: Request) => {
       const fresh = await call('/rest/v1/rpc/site_admin_directory',{method:'POST',headers:head,body:'{}'});
       if (fresh.ok) {
         const rows = await fresh.json();
-        if (rows.some((row:{user_id:string;park:string|null;role:string;active:boolean})=>row.user_id===id&&row.active&&(allParks?row.role==='content_admin':row.park===park&&row.role==='park_admin'))) return respond({id});
+        if (rows.some((row:{user_id:string;park:string|null;role:string;active:boolean})=>row.user_id===id&&row.active&&(allParks?row.role==='content_admin':buildingScope?row.role==='building_admin':row.park===park&&row.role==='park_admin'))) return respond({id});
       }
       return respond({code:'AUTHORIZATION_PENDING',message:'登录账号已创建，但园区权限尚未确认。请先刷新列表核对；若列表中没有此邮箱，再使用「授权已有账号」完成开通。'+(problem?.message?' 原因：'+problem.message:'')},409);
     }

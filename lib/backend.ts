@@ -108,7 +108,7 @@ export async function signIn(email: string, password: string) {
   return session;
 }
 export function signOut() { saveSession(null); }
-export type AdminRole = "superadmin" | "content_admin" | "park_admin";
+export type AdminRole = "superadmin" | "content_admin" | "park_admin" | "building_admin";
 export type AdminProfile = { user_id: string; role: AdminRole; active: boolean; park?: string | null; display_name?: string };
 export async function adminProfile(): Promise<AdminProfile | null> {
   const session = readSession();

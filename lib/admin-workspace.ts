@@ -2,7 +2,9 @@ import { accessToken, backendKey, backendUrl, type AdminRole } from "./backend";
 import type { VisitorSummary, VisitRecord, VisitPage } from './visitor-analytics';
 
 export const ALL_PARKS_SCOPE = "__all_parks__";
-export const adminRoleLabel = (role: AdminRole) => role === "superadmin" ? "超级管理员" : role === "content_admin" ? "全园区管理员" : "园区管理员";
+/** 只管理被指定为负责人的楼栋；具体楼栋在「楼栋」页分配。 */
+export const BUILDINGS_SCOPE = "__buildings__";
+export const adminRoleLabel = (role: AdminRole) => role === "superadmin" ? "超级管理员" : role === "content_admin" ? "全园区管理员" : role === "building_admin" ? "楼栋管理员" : "园区管理员";
 
 export type Park = { id: string; name: string; address: string; latitude: number | null; longitude: number | null; contact_name: string; contact_phone: string; description: string; active: boolean };
 export type SiteSettings = { platform_name: string; hotline: string; admin_limit: number; share_title: string; share_description: string; share_image: string };
@@ -47,8 +49,16 @@ export const loadVisitorHistory = (visitor:string,page:number) => workspaceReque
 export const savePark = (park: Park) => workspaceRequest<Park>("/rest/v1/rpc/save_site_park", { p_park: park });
 export const saveSettings = (settings: SiteSettings) => workspaceRequest<SiteSettings>("/rest/v1/rpc/save_site_settings", { p_settings: settings });
 export const saveInquiry = (id: string, status: string, reply: string, archived = false) => workspaceRequest<void>("/rest/v1/rpc/manage_site_inquiry", { p_id: id, p_status: status, p_reply: reply, p_archived: archived });
-export const manageAdmin = (action: string, entry: Partial<AdminEntry>) => workspaceRequest<string>("/rest/v1/rpc/manage_site_admin", { p_action: action, p_email: entry.email || null, p_user: entry.user_id || null, p_name: entry.display_name || "", p_park: entry.role === "content_admin" ? ALL_PARKS_SCOPE : entry.park || null, p_active: entry.active ?? true });
-export const createAdminAccount = (entry: {email: string; password: string; name: string; park: string}) => workspaceRequest<{id: string}>("/functions/v1/admin-accounts", entry);
+export const manageAdmin = (action: string, entry: Partial<AdminEntry>) => workspaceRequest<string>("/rest/v1/rpc/manage_site_admin", {
+  p_action: action,
+  p_email: entry.email || null,
+  p_user: entry.user_id || null,
+  p_name: entry.display_name || "",
+  p_park: entry.role === "content_admin" ? ALL_PARKS_SCOPE : entry.role === "building_admin" ? BUILDINGS_SCOPE : entry.park || null,
+  p_active: entry.active ?? true,
+  p_role: entry.role || null,
+});
+export const createAdminAccount = (entry: {email: string; password: string; name: string; park: string | null; role: AdminRole}) => workspaceRequest<{id: string}>("/functions/v1/admin-accounts", entry);
 export const checkAdminService = () => workspaceRequest<{ready:boolean}>("/functions/v1/admin-accounts", {action:"check"});
 export async function changeOwnPassword(password: string) {
   const token = await accessToken();

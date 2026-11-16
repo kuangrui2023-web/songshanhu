@@ -103,11 +103,23 @@
     const box = window.SiteCompanies && window.SiteCompanies.state;
     return Boolean(box && box.loading && !box.items.length);
   }
-  function buildingCompanies(building) {
+  /** 集群注册：同一间办公室登记几十家公司，人并不在楼内办公，不参与楼层导览 */
+  function isClusterCompany(item) {
+    const tags = Array.isArray(item.tags) ? item.tags : [];
+    return tags.indexOf('集群注册') >= 0 || String(item.address || '').indexOf('集群注册') >= 0;
+  }
+  function matchedCompanies(building) {
     /* 有 building_id 时按稳定 ID 匹配；老数据没有 ID 才退回按名称匹配。 */
-    return companyItems().filter((item) => item.buildingId
+    return companyItems().filter((item) => (item.buildingId
       ? item.buildingId === building.id
-      : sameBuilding(item.building, building.name));
+      : sameBuilding(item.building, building.name)));
+  }
+  /** 正常办公的企业：楼栋卡片数量、入驻企业列表、楼层导览都用这一份 */
+  function buildingCompanies(building) {
+    return matchedCompanies(building).filter((item) => !isClusterCompany(item));
+  }
+  function buildingClusterCompanies(building) {
+    return matchedCompanies(building).filter(isClusterCompany);
   }
   function buildingUnits(building) {
     return state.units.filter((unit) => unit.buildingId === building.id);
@@ -223,6 +235,7 @@
       return `<div class="building-page"><div class="building-empty">没有找到这栋楼，可能已下架。<br><button type="button" class="result-reset" data-act="tab" data-v="home">返回首页</button></div></div>`;
     }
     const companies = buildingCompanies(building);
+    const clusterCompanies = buildingClusterCompanies(building);
     const units = buildingUnits(building).filter((unit) => unit.status === 'vacant' || unit.status === 'reserved');
     const vacant = units.filter((unit) => unit.status === 'vacant');
     const floors = new Map();
@@ -277,6 +290,7 @@
             ${companies.length
               ? `<div class="building-company-list" tabindex="0" role="group" aria-label="${esc(building.name)}的入驻企业">${companyList.map(companyItem).join('')}</div>`
               : `<p class="building-companies-empty">${pending ? '正在读取企业资料…' : '这栋楼暂时没有公开的企业资料，可以点「咨询这栋楼」了解。'}</p>`}
+            ${clusterCompanies.length ? `<p class="building-cluster-note">另有 ${clusterCompanies.length} 家企业在楼内办理了「集群注册」——工商登记地址集中在同一间办公室，人不在楼内办公，因此不算入驻家数，也不在楼层导览中显示。</p>` : ''}
           </div>
         </div>
       </div>

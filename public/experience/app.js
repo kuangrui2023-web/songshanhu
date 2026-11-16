@@ -209,7 +209,7 @@ function renderHome() {
       </div>`}
   </div>
   ${companyHomeSection()}
-  <footer class="site-footer">${State.listingsLoading ? "正在读取房源资料…" : State.listingsError ? "房源资料暂未取得" : "已展示 " + filtered.length + " 条结果"} · 房源资料由发布方维护<br>松山湖产业招商 · 登来</footer>`;
+  <footer class="site-footer">${State.listingsLoading ? "正在读取房源资料…" : State.listingsError ? "房源资料暂未取得" : "已展示 " + filtered.length + " 条结果"} · 房源资料由发布方维护<br>松山湖产业空间</footer>`;
 }
 
 /* ---------------- 地图找房 ---------------- */
@@ -525,7 +525,7 @@ function renderMessage() {
     return `
   <div class="pad" style="padding-top:14px">
     <div class="card" style="padding:13px;display:flex;align-items:center;gap:12px">
-      <div class="contact-avatar" style="background:linear-gradient(135deg,#4FA4FF,#1677FF)">${esc(email.slice(0, 1).toUpperCase())}</div>
+      <div class="contact-avatar" style="background:linear-gradient(135deg,#1C6E4A,#0F5132)">${esc(email.slice(0, 1).toUpperCase())}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(email)}</div>
         <div style="font-size:11.5px;color:var(--text-3);margin-top:3px">已登录 · 共 ${list.length} 条留言 · ${pending} 条待回复</div>
@@ -554,7 +554,7 @@ function renderMessage() {
   return `
   <div class="pad" style="padding-top:14px">
     <div class="card" style="padding:13px;display:flex;align-items:center;gap:12px">
-      <div class="contact-avatar" style="background:linear-gradient(135deg,#4FA4FF,#1677FF)">${esc(v.nick.slice(0, 1))}</div>
+      <div class="contact-avatar" style="background:linear-gradient(135deg,#1C6E4A,#0F5132)">${esc(v.nick.slice(0, 1))}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:14.5px;font-weight:600">${esc(v.nick)}，你好</div>
         <div style="font-size:11.5px;color:var(--text-3);margin-top:3px">共 ${list.length} 条咨询 · ${pending} 条待回复</div>
@@ -641,7 +641,7 @@ function renderMine() {
       </div>` : ''}
   </div>
   <div style="text-align:center;font-size:11px;color:var(--text-3);padding:18px 0 6px;line-height:1.7">
-    松山湖产业招商网站<br>房源、咨询及已提交的企业／需求资料保存在云端<br>登录后提交的留言归入账号；本机回执用于查看未登录时的回复
+    松山湖产业空间<br>房源、咨询及已提交的企业／需求资料保存在云端<br>登录后提交的留言归入账号；本机回执用于查看未登录时的回复
   </div>`;
 }
 
@@ -1344,7 +1344,7 @@ async function aiAsk(preset) {
 }
 
 /* ---------------- 视图切换 ---------------- */
-const TAB_META = { home: '松山湖产业招商网站', message: '我的留言', mine: '我的' };
+const TAB_META = { home: '松山湖产业空间', message: '我的留言', mine: '我的' };
 const VIEW_TITLE = { detail: '房源详情', admin: '管理后台', resources: '产业资源', companies: '入驻企业', company: '企业详情', building: '楼栋详情' };
 const TAB_VIEWS = ['home', 'message', 'mine'];
 const ICONS = {
@@ -1354,7 +1354,7 @@ const ICONS = {
   mine: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/>'
 };
 
-const SITE_TITLE = '松山湖产业招商网站';
+const SITE_TITLE = '松山湖产业空间';
 
 /* URL 跟随当前视图：详情页时地址栏带 ?id=房源号，
    微信里点右上角 ●··· →「发送给朋友」即可直接把本房源发给好友 */
@@ -1417,7 +1417,7 @@ function setView(name, push, navigation = {}) {
   if (el) { el.classList.add('active'); el.scrollTop = 0; }
   if (isTab) State.tab = name;
 
-  $('#navTitle').textContent = (name === 'admin' && State.session.admin) ? '管理后台' : (isTab ? TAB_META[name] : (VIEW_TITLE[name] || '松山湖产业招商网站'));
+  $('#navTitle').textContent = (name === 'admin' && State.session.admin) ? '管理后台' : (isTab ? TAB_META[name] : (VIEW_TITLE[name] || '松山湖产业空间'));
   $('#navBack').classList.toggle('show', !isTab);
   let navRight = '';
   if (!isTab && name === 'detail') {
@@ -1447,7 +1447,7 @@ function setView(name, push, navigation = {}) {
 
 function updateSiteHeader() {
   const desktop = window.matchMedia('(min-width:900px)').matches;
-  $('#navTitle').textContent = desktop ? (Api.db.settings.siteName || '松山湖产业招商') : (TAB_META[State.view] || VIEW_TITLE[State.view] || '松山湖产业招商');
+  $('#navTitle').textContent = desktop ? (Api.db.settings.siteName || '松山湖产业空间') : (TAB_META[State.view] || VIEW_TITLE[State.view] || '松山湖产业空间');
   $$('.desktop-nav button').forEach(button => {
     const active = button.dataset.v === State.view
       || (button.dataset.act === 'open:resources' && State.view === 'resources')
@@ -1688,7 +1688,7 @@ function adminMapBody() {
           <div style="flex:1;min-width:0">
             <div class="anno-name">${esc(it.p.name)}
               ${it.c.custom ? '<span class="role-chip" style="background:#FFF1E6;color:#D97706">已校准</span>'
-      : (it.p.precise ? '<span class="role-chip" style="background:#E8F2FF;color:#1677FF">精确坐标</span>'
+      : (it.p.precise ? '<span class="role-chip" style="background:#E7EFE7;color:#0F5132">精确坐标</span>'
         : '<span class="role-chip" style="background:#EEF1F6;color:#8794A6">估算坐标</span>')}
             </div>
             <div class="anno-meta">${esc(it.p.addr)}<br>
@@ -3182,8 +3182,8 @@ function sheetAbout() {
     <div class="sheet-head"><h3>关于平台</h3>
       <button class="sheet-close" type="button" data-act="close:sheet">✕</button></div>
     <div class="sheet-body" style="padding-bottom:18px">
-      <div style="background:linear-gradient(135deg,#1677FF,#4FA4FF);border-radius:12px;padding:16px;color:#fff">
-        <div style="font-size:17px;font-weight:700">松山湖产业招商</div>
+      <div style="background:linear-gradient(135deg,#12593A,#0F5132);border-radius:12px;padding:16px;color:#fff">
+        <div style="font-size:17px;font-weight:700">松山湖产业空间</div>
         <div style="font-size:12px;opacity:.9;margin-top:6px;line-height:1.7">
           覆盖松山湖高新区 12 个重点产业园，提供房源展示、在线咨询、预约看房与招商数据管理服务。
         </div>
@@ -3344,8 +3344,8 @@ function buildPoster(kind, l, done) {
     if (kind === 'site') {
       const st = Api.db.settings.share || {};
       g.fillStyle = '#16202E';
-      g.font = `700 ${fitText(g, st.title || '松山湖产业招商', W - 130, 40)}px ${FONT}`;
-      g.fillText(st.title || '松山湖产业招商', 56, 540);
+      g.font = `700 ${fitText(g, st.title || '松山湖产业空间', W - 130, 40)}px ${FONT}`;
+      g.fillText(st.title || '松山湖产业空间', 56, 540);
       g.fillStyle = '#6B7A8D';
       g.font = `400 24px ${FONT}`;
       g.fillText(st.desc || '写字楼 / 厂房实盘 · 在线选址咨询', 56, 582);
@@ -3422,7 +3422,7 @@ function buildPoster(kind, l, done) {
         const g2 = c2.getContext('2d');
         g2.fillStyle = '#fff'; g2.fillRect(0, 0, W, H);
         g2.fillStyle = '#16202E'; g2.font = `700 40px ${FONT}`;
-        g2.fillText(kind === 'site' ? '松山湖产业招商' : (publicListingTitle(l)), 56, 120);
+        g2.fillText(kind === 'site' ? '松山湖产业空间' : (publicListingTitle(l)), 56, 120);
         g2.drawImage(qrCanvas(url, 200), 56, 200, 200, 200);
         POSTER.cv = c2;
         out = c2.toDataURL('image/jpeg', 0.92);
@@ -3455,7 +3455,7 @@ function openPoster(dataUrl) {
   const finish=blob=>{
     if(generation!==POSTER.generation)return;
     if(!blob){button.disabled=true;button.textContent='图片准备失败';posterSaveHint('请关闭后重新生成，或改用复制链接。');return;}
-    POSTER.blobUrl=URL.createObjectURL(blob);POSTER.file=new File([blob],'松山湖产业招商_'+Date.now()+'.jpg',{type:'image/jpeg'});
+    POSTER.blobUrl=URL.createObjectURL(blob);POSTER.file=new File([blob],'松山湖产业空间_'+Date.now()+'.jpg',{type:'image/jpeg'});
     image.src=POSTER.blobUrl;original.href=POSTER.blobUrl;original.hidden=false;button.disabled=false;
     const mobile=/iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent);
     button.textContent=posterCanShareFile()&&mobile?'分享／保存图片':mobile?'打开原图保存':'下载图片';
@@ -3482,7 +3482,7 @@ function savePoster() {
   if(mobile&&posterCanShareFile()){
     POSTER.busy=true;
     // Do not await any conversion or network operation before this call.
-    navigator.share({files:[POSTER.file],title:'松山湖产业招商海报'}).then(()=>{
+    navigator.share({files:[POSTER.file],title:'松山湖产业空间海报'}).then(()=>{
       posterSaveHint('系统分享操作已完成；图片是否存入相册，请以系统中的操作结果为准。');
     }).catch(error=>{
       if(error.name==='AbortError'){posterSaveHint('已取消分享，可再次点击按钮或打开原图保存。');return;}
@@ -3512,7 +3512,7 @@ function shareCtx(kind, id) {
   return {
     kind: 'site',
     l: null,
-    title: (Api.db.settings.share && Api.db.settings.share.title) || '松山湖产业招商网站',
+    title: (Api.db.settings.share && Api.db.settings.share.title) || '松山湖产业空间',
     desc: (Api.db.settings.share && Api.db.settings.share.desc) || '房源筛选、在线留言，招商顾问一对一对接',
     url: shareLink({}),
     imgUrl: ''
@@ -3531,7 +3531,7 @@ function sheetShare(kind, id) {
     <div class="sheet-body">
       <div class="share-card">
         <div class="share-thumb">${c.kind === 'site'
-      ? '<span class="share-site-symbol" aria-hidden="true">登来</span>'
+      ? '<span class="share-site-symbol" aria-hidden="true">松</span>'
       : `<img src="${photoURL((c.l.photos && c.l.photos[0]) || photoURI('facade', 0))}" alt="">`}</div>
         <div class="share-meta">
           <div class="share-title">${esc(c.title)}</div>
@@ -4319,7 +4319,7 @@ function boot() {
     Api.logView(l.id);
     saveSession();
     State.params.id = l.id;
-    document.title = l.parkName + ' ' + l.area + '㎡ ' + l.rent + '元/㎡·月 · 松山湖产业招商';
+    document.title = l.parkName + ' ' + l.area + '㎡ ' + l.rent + '元/㎡·月 · 松山湖产业空间';
     if (State.view === 'detail' && State.params.id === l.id) render();
     else setView('detail', true);
   };

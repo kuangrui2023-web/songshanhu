@@ -3,9 +3,9 @@ import { sitePath } from "@/lib/site-path";
 
 export function SiteHeader() {
   return <header className="site-header">
-    <a className="brand" href={sitePath("/")}><span className="brand-mark"><Building2 size={23}/></span><strong>松山湖产业招商</strong></a>
+    <a className="brand" href={sitePath("/")}><span className="brand-mark"><Building2 size={23}/></span><strong>松山湖产业空间</strong></a>
     <nav aria-label="主导航"><a href={sitePath("/#listings")}>找房源</a><a href={sitePath("/industry")}>产业资源</a><a href={sitePath("/me")}>我的</a></nav>
-    <span className="review-badge">登来</span>
+    <span className="review-badge">松山湖</span>
   </header>;
 }
 

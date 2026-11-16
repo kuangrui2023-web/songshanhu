@@ -158,7 +158,7 @@ if (email && password) {
 //    需要先在 Supabase 关闭 Confirm email 并执行 supabase/customer_accounts.sql；
 //    未完成配置时只打印信息，不算失败。
 // 用自己域名下的临时地址，避免 example.com 被 Supabase 判为无效邮箱。
-const customerEmail = `smoke+${Date.now()}@denglai.xin`;
+const customerEmail = `smoke+${Date.now()}@example.com`;
 const customerPassword = "SmokeTest-" + randomUUID().slice(0, 8);
 const signup = await fetch(`${baseUrl}/auth/v1/signup`, {
   method: "POST",

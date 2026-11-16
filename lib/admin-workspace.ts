@@ -10,7 +10,7 @@ export type Park = { id: string; name: string; address: string; latitude: number
 export type SiteSettings = { platform_name: string; hotline: string; admin_limit: number; share_title: string; share_description: string; share_image: string };
 export type AdminEntry = { user_id: string; display_name: string; email: string; role: AdminRole; park: string | null; active: boolean; created_at: string; last_sign_in_at: string | null };
 export type Metrics = { visitors: number; views: number; today_visitors: number; today_views: number; since: string | null; trend: { day: string; visitors: number; views: number }[]; top: { id: string; title: string; views: number }[] };
-export const defaultSettings: SiteSettings = { platform_name: "松山湖产业招商", hotline: "", admin_limit: 5, share_title: "", share_description: "", share_image: "" };
+export const defaultSettings: SiteSettings = { platform_name: "松山湖产业空间", hotline: "", admin_limit: 5, share_title: "", share_description: "", share_image: "" };
 
 export class WorkspaceError extends Error {
   constructor(message: string, public code: string = "") { super(message); this.name = "WorkspaceError"; }

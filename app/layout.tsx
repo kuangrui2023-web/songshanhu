@@ -3,15 +3,15 @@ import "./globals.css";
 import { sitePath } from "@/lib/site-path";
 
 export const metadata: Metadata = {
-  title: "松山湖产业招商｜企业空间与产业资源",
-  description: "浏览松山湖周边写字楼、厂房等产业空间，按需求筛选房源，了解产业资源与企业合作服务。",
+  title: "松山湖产业空间｜园区房源与产业资源",
+  description: "浏览松山湖园区写字楼、厂房等产业空间与入驻企业，按需求筛选房源，了解产业资源与招商服务。",
   icons: {
     icon: [
-      { url: sitePath("/favicon.svg?v=20261115a"), type: "image/svg+xml" },
-      { url: sitePath("/favicon-180.png?v=20261115a"), sizes: "180x180", type: "image/png" },
+      { url: sitePath("/favicon.svg?v=20261116a"), type: "image/svg+xml" },
+      { url: sitePath("/favicon-180.png?v=20261116a"), sizes: "180x180", type: "image/png" },
     ],
-    shortcut: sitePath("/favicon.svg?v=20261115a"),
-    apple: sitePath("/favicon-180.png?v=20261115a"),
+    shortcut: sitePath("/favicon.svg?v=20261116a"),
+    apple: sitePath("/favicon-180.png?v=20261116a"),
   },
 };
 

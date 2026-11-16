@@ -37,7 +37,7 @@ export default async function ListingDetail({ params }: { params: Promise<{ id: 
         <aside className="detail-summary"><span className="eyebrow">实拍资料 · {item.category}</span><h1>{title}</h1><p>该房源尚未核实位置、面积和价格，暂不作为在租房源展示。</p><div className="detail-price"><strong className="price-pending">资料待补充</strong></div><div className="detail-alert">照片来自用户，四张照片分别属于不同房源。管理员补充并核实资料后再上架。</div></aside>
       </div>
     </main>
-    <footer>松山湖产业招商 · 网站评审版</footer>
+    <footer>松山湖产业空间 · 网站评审版</footer>
     <MobileNavigation active="listings"/>
   </div>;
 }

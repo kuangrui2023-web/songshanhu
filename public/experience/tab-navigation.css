@@ -50,7 +50,7 @@
   width:var(--tab-pill-width,calc((100% - 8px)/4));border-radius:23px;
   background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(210,229,255,.58));
   border:1px solid rgba(255,255,255,.94);
-  box-shadow:0 2px 8px rgba(38,81,139,.09),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(22,119,255,.08);
+  box-shadow:0 2px 8px rgba(24,48,36,.09),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(15,81,50,.08);
   transform:translate3d(var(--tab-pill-x,4px),0,0);
   transition:transform 300ms var(--ease-out);pointer-events:none;
  }
@@ -76,4 +76,4 @@
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
  .tab-rail{background:rgba(248,250,255,.97)}
 }
-@media(prefers-reduced-transparency:reduce){.tab-rail{background:#f8faff;-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media(prefers-reduced-transparency:reduce){.tab-rail{background:#f5f3ed;-webkit-backdrop-filter:none;backdrop-filter:none}}

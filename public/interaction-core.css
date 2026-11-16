@@ -6,11 +6,11 @@ button:disabled{cursor:wait}
 button.btn,button.ai-btn,button.admin-primary,button.op-btn.pri{position:relative;overflow:hidden;isolation:isolate}
 .tap-ripple{position:absolute;pointer-events:none;border-radius:50%;background:currentColor;opacity:0;animation:tap-wave 520ms var(--ease-out);z-index:-1}
 @keyframes tap-wave{from{transform:scale(0);opacity:.22}to{transform:scale(1);opacity:0}}
-.media-frame{position:relative;overflow:hidden;background:#eaf0f8;isolation:isolate}
-.media-frame::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(100deg,#eaf0f8 20%,#f8fbff 42%,#eaf0f8 65%);background-size:240% 100%;animation:media-shimmer 1.6s linear infinite;pointer-events:none;transition:opacity 220ms}
+.media-frame{position:relative;overflow:hidden;background:#f3f2ef;isolation:isolate}
+.media-frame::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(100deg,#f3f2ef 20%,#f5f3ed 42%,#f3f2ef 65%);background-size:240% 100%;animation:media-shimmer 1.6s linear infinite;pointer-events:none;transition:opacity 220ms}
 .media-frame img{opacity:0;transition:opacity 240ms var(--ease-out),transform 400ms var(--ease-out)}
 .media-frame.media-ready img{opacity:1}.media-frame.media-ready::before{opacity:0;animation:none}
-.media-frame.media-error::before{background:#edf2f8;animation:none}.media-frame.media-error::after{content:"图片暂时无法加载";position:absolute;inset:0;display:grid;place-items:center;color:#687b93;font-size:12px;z-index:2;pointer-events:none}
+.media-frame.media-error::before{background:#f3f2ef;animation:none}.media-frame.media-error::after{content:"图片暂时无法加载";position:absolute;inset:0;display:grid;place-items:center;color:#898172;font-size:12px;z-index:2;pointer-events:none}
 @keyframes media-shimmer{from{background-position:140% 0}to{background-position:-100% 0}}
 .success-check{flex:none;width:22px;height:22px;color:#099866}.success-check path{stroke-dasharray:100;stroke-dashoffset:0;animation:draw-check 420ms var(--ease-out)}
 @keyframes draw-check{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}

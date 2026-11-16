@@ -88,7 +88,7 @@ export async function parseResponse(response: Response) {
   if (!response.ok) {
     const code = result?.error_code || result?.code;
     const detail = result?.message || result?.msg || result?.error_description || result?.error || `请求失败 (${response.status})`;
-    if (code === "invalid_credentials" || /invalid login credentials/i.test(detail)) throw new Error("邮箱或密码不正确。请使用本站管理员邮箱及为该用户设置的密码，不能使用 WorkBuddy 密码。");
+    if (code === "invalid_credentials" || /invalid login credentials/i.test(detail)) throw new Error("邮箱或密码不正确。请使用本站管理员邮箱及对应的密码。");
     if (code === "email_not_confirmed") throw new Error("该邮箱尚未确认，请先完成邮箱确认。");
     if (response.status === 413 || /maximum allowed size|payload too large|exceeded.*size/i.test(detail)) throw new Error("文件超过当前云存储允许的单文件大小，请压缩后重新上传。");
     if (/row.level security|permission denied/i.test(detail)) throw new Error("云端拒绝了操作：当前账号的管理权限或数据访问规则需要检查。房源内容尚未保存。");

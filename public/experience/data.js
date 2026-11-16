@@ -430,7 +430,7 @@ function seedDB() {
     messages: [],
     admins: [],
     settings: {
-      maxAdmins: 5, siteName: '松山湖产业招商', hotline: '',
+      maxAdmins: 5, siteName: '松山湖产业空间', hotline: '',
       // 短信验证码配置（演示模式下不真正发短信，验证码直接提示在页面上）
       sms: { provider: 'demo', sign: '松山湖写字楼', demoShow: true, ttlSec: 300, cooldownSec: 60, maxTry: 5 },
       // 微信分享 / 公众号 JS-SDK 配置占位：填入公众号 appId 后即可启用原生分享
@@ -440,7 +440,7 @@ function seedDB() {
       // 腾讯位置服务 Key（合规在线地图必需；留空则回退到内置静态底图）
       tmapKey: '',
       // 转发卡片自定义（标题 / 描述 / 封面图 data URL 或路径，空则用默认）
-      share: { title: '松山湖产业招商网站', desc: '地图找房、筛选比价、在线留言，招商顾问一对一对接', img: '' },
+      share: { title: '松山湖产业空间', desc: '地图找房、筛选比价、在线留言，招商顾问一对一对接', img: '' },
       // 产业资源（管理员后台录入，产业资源页展示）
       indRes: []
     },
@@ -487,11 +487,13 @@ const Api = {
     if (!st.share) st.share = sd.share;
     if (!st.share.title) st.share.title = sd.share.title;
     if (!st.share.desc) st.share.desc = sd.share.desc;
-    /* 品牌名升级：松山湖写字楼招商 → 松山湖产业招商 */
-    if (st.siteName === '松山湖写字楼招商') st.siteName = '松山湖产业招商';
+    /* 品牌名升级：统一为「松山湖产业空间」 */
+    if (st.siteName === '松山湖产业招商') st.siteName = '松山湖产业空间';
+    if (st.share && st.share.title === '松山湖产业招商网站') st.share.title = '松山湖产业空间';
+    if (st.siteName === '松山湖写字楼招商') st.siteName = '松山湖产业空间';
     /* 手机端分享卡片/海报：云端旧默认分享标题同步替换为新品牌（管理员自定义过的不动） */
-    if (st.share && st.share.title === '松山湖写字楼招商 · 12 个产业园在租房源') st.share.title = '松山湖产业招商小程序';
-    if (st.share && st.share.title === '松山湖产业招商 · 12 个产业园在租房源') st.share.title = '松山湖产业招商小程序';
+    if (st.share && st.share.title === '松山湖写字楼招商 · 12 个产业园在租房源') st.share.title = '松山湖产业空间';
+    if (st.share && st.share.title === '松山湖产业招商 · 12 个产业园在租房源') st.share.title = '松山湖产业空间';
     /* 产业资源（管理员录入） */
     if (!st.indRes) st.indRes = JSON.parse(JSON.stringify(sd.indRes));
     /* 老房源补业态字段（写字楼 / 厂房），保证三入口筛选可用；同时补齐精准定位字段 */
@@ -753,7 +755,7 @@ const Sms = {
  * 说明：本阶段为演示级权限（公开读写），正式运营需加服务端鉴权。
  * -------------------------------------------------- */
 const Cloud = {
-  // 房源由 bridge.js 从本网站的 Supabase 公开视图读取。绝不连接 WorkBuddy 云服务。
+  // 房源由 bridge.js 从本网站的 Supabase 公开视图读取。
   ready: false,
   client: null,
   init() {},
